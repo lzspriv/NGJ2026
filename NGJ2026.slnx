@@ -1,0 +1,8 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/方案項目/" />
+  <Project Path="NGJ_Game/NGJ_Game.vcxproj" Id="10bebefb-6464-4f34-9839-e34f4d4621b5" />
+</Solution>
