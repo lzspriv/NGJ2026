@@ -61,6 +61,10 @@ int main() {
 	float playerInvincibleTimer = 0.0f;
 	bool isGameOver = false;
 
+	// 週期性怪物生成
+	float enemySpawnTimer = 0.0f;
+	const float enemySpawnInterval = 7.0f;
+
 	// 怪物管理（全地圖隨機空地生成）
 	std::vector<NGJ::Enemy> enemies;
 	std::srand((unsigned int)std::time(nullptr));
@@ -74,8 +78,11 @@ int main() {
 	// 呼叫 spawnRandom() 讓怪物誕生在隨機角落
 	enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 	enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
-	enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+	enemies.emplace_back("Slime", 6, 3, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 	enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+	if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
+		enemies.emplace_back("Assassin", 5, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+	}
 
 	// 指定部分敵人為遠程攻擊型
 	if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f); // Wolf
@@ -191,10 +198,14 @@ int main() {
 				enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+				if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
+					enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+				}
 
 				if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f);
 				if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f);
 
+				enemySpawnTimer = 0.0f;
 				swordHitThisSwing.assign(enemies.size(), false);
 				wasSwordActive = false;
 			}
@@ -436,11 +447,43 @@ int main() {
 
 		// 更新敵人狀態（使用世界座標的 player 位置）
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
+		NGJ::Vec2 viewMin((float)(winPos.x - monLeft), (float)(winPos.y - monTop));
+		NGJ::Vec2 viewMax(viewMin.x + (float)currentWidth, viewMin.y + (float)currentHeight);
 		if (!showRewardUI) {
 			for (auto& e : enemies) {
-				e.Update(dt, playerWorldPos, &dungeonMap); // <--- 把地圖的記憶體位址傳進去
+				e.Update(dt, playerWorldPos, &dungeonMap, &viewMin, &viewMax); // <--- 把地圖與可視範圍傳進去
 				// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
 				// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+			}
+		}
+
+		// 每 5 秒新增一隻隨機怪物（獎勵選單與勝利畫面期間暫停）
+		if (!showRewardUI && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
+			enemySpawnTimer += dt;
+			if (enemySpawnTimer >= enemySpawnInterval) {
+				enemySpawnTimer -= enemySpawnInterval;
+				int typeCount = ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) ? 5 : 4;
+				int t = std::rand() % typeCount;
+				switch (t) {
+				case 0:
+					enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+					break;
+				case 1:
+					enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+					enemies.back().SetRangedAttack(true, 260.0f, 0.7f);
+					break;
+				case 2:
+					enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+					break;
+				case 3:
+					enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+					enemies.back().SetRangedAttack(true, 330.0f, 0.45f);
+					break;
+				default:
+					enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+					break;
+				}
+				swordHitThisSwing.push_back(false);
 			}
 		}
 
@@ -478,10 +521,50 @@ int main() {
 				}
 			}
 
-			// 子彈命中：命中後子彈失效並扣敵人血量
+			// 子彈命中：命中後子彈失效並扣敵人血量（Goblin 盾牌可擋子彈）
 			for (auto& b : player.bullets) {
 				if (!b.active) continue;
 				Vector2 bulletWorld = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+
+				// Goblin 盾牌：朝向玩家，僅擋子彈，不擋近戰
+				if (e.name == "Goblin") {
+					float fx = playerMapPos.x - enemyPos.x;
+					float fy = playerMapPos.y - enemyPos.y;
+					float fl = sqrtf(fx * fx + fy * fy);
+					if (fl > 0.001f) {
+						fx /= fl;
+						fy /= fl;
+						float px = -fy;
+						float py = fx;
+						float cx = enemyPos.x + fx * 14.0f;
+						float cy = enemyPos.y + fy * 14.0f;
+						float halfLen = 14.0f;
+						float x1 = cx - px * halfLen;
+						float y1 = cy - py * halfLen;
+						float x2 = cx + px * halfLen;
+						float y2 = cy + py * halfLen;
+
+						float vx = x2 - x1;
+						float vy = y2 - y1;
+						float wx = bulletWorld.x - x1;
+						float wy = bulletWorld.y - y1;
+						float vv = vx * vx + vy * vy;
+						float t = (vv > 0.0f) ? ((wx * vx + wy * vy) / vv) : 0.0f;
+						if (t < 0.0f) t = 0.0f;
+						if (t > 1.0f) t = 1.0f;
+						float qx = x1 + vx * t;
+						float qy = y1 + vy * t;
+						float dxs = bulletWorld.x - qx;
+						float dys = bulletWorld.y - qy;
+						float shieldDist = sqrtf(dxs * dxs + dys * dys);
+						float frontDot = (bulletWorld.x - enemyPos.x) * fx + (bulletWorld.y - enemyPos.y) * fy;
+						if (frontDot > 0.0f && shieldDist <= 5.0f) {
+							b.active = false;
+							break;
+						}
+					}
+				}
+
 				float bdx = bulletWorld.x - enemyPos.x;
 				float bdy = bulletWorld.y - enemyPos.y;
 				float d = sqrtf(bdx * bdx + bdy * bdy);
@@ -575,6 +658,26 @@ int main() {
 				case NGJ::EnemyState::Dead: col = DARKGRAY; break;
 				}
 				DrawCircle((int)wp.x, (int)wp.y, 12, col);
+
+				// Goblin 盾牌線條（朝向玩家）
+				if (e.name == "Goblin") {
+					float fx = playerMapPos.x - wp.x;
+					float fy = playerMapPos.y - wp.y;
+					float fl = sqrtf(fx * fx + fy * fy);
+					if (fl > 0.001f) {
+						fx /= fl;
+						fy /= fl;
+						float px = -fy;
+						float py = fx;
+						float cx = wp.x + fx * 14.0f;
+						float cy = wp.y + fy * 14.0f;
+						float halfLen = 14.0f;
+						Vector2 s1 = { cx - px * halfLen, cy - py * halfLen };
+						Vector2 s2 = { cx + px * halfLen, cy + py * halfLen };
+						DrawLineEx(s1, s2, 3.0f, SKYBLUE);
+					}
+				}
+
 				int barW = 30; int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, barW, 5, DARKGRAY);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, hpW, 5, RED);

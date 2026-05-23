@@ -65,8 +65,8 @@ void PlayerManager::HandleInput() {
             currentMode = MODE_MELEE;
         }
 
-        // 滑鼠點擊攻擊
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        // 按空白鍵攻擊，滑鼠僅提供攻擊方向
+        if (IsKeyPressed(KEY_SPACE)) {
             Vector2 mousePos = GetMousePosition();
             Vector2 playerCenter = { playerPos.x + 10.0f, playerPos.y + 10.0f };
             Vector2 dir = { mousePos.x - playerCenter.x, mousePos.y - playerCenter.y };

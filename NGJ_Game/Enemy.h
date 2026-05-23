@@ -53,7 +53,8 @@ public:
     virtual ~Enemy();
 
     // 每幀呼叫以更新狀態與行為
-    void Update(float deltaTime, const Vec2& playerPosition, Map* map);
+    void Update(float deltaTime, const Vec2& playerPosition, Map* map,
+                const Vec2* viewMin = nullptr, const Vec2* viewMax = nullptr);
 
     // 受傷、攻擊、死亡等介面
     virtual void TakeDamage(int damage);
@@ -93,7 +94,8 @@ protected:
     void UpdateState(const Vec2& playerPosition, Map* map);
     void UpdateIdle(float deltaTime, Map* map);
     void UpdatePatrol(float deltaTime, Map* map);
-    void UpdateChase(float deltaTime, const Vec2& playerPosition, Map* map);
+    void UpdateChase(float deltaTime, const Vec2& playerPosition, Map* map,
+                     const Vec2* viewMin = nullptr, const Vec2* viewMax = nullptr);
     void UpdateAttack(float deltaTime, const Vec2& playerPosition);
     void UpdateBullets(float deltaTime, Map* map);
 
@@ -108,6 +110,16 @@ protected:
     float bulletCooldown;
     float bulletTimer;
     std::vector<EnemyBullet> bullets;
+
+    // Wolf 衝刺機制
+    float dashCooldownTimer;
+    float dashStopTimer;
+    bool isDashing;
+    float dashSpeed;
+    Vec2 dashTarget;
+
+    // Assassin 特性：每 1~2 秒瞬移到玩家背後
+    float assassinTeleportTimer;
 };
 
 } // namespace NGJ

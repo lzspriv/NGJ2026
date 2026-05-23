@@ -61,14 +61,21 @@ NGJ::Enemy::Enemy(const std::string& name_,
 	canShoot(false),
 	bulletSpeed(220.0f),
 	bulletCooldown(1.2f),
-	bulletTimer(0.0f)
+	bulletTimer(0.0f),
+	dashCooldownTimer(0.0f),
+	dashStopTimer(0.0f),
+	isDashing(false),
+	dashSpeed(460.0f),
+	dashTarget(startPos),
+	assassinTeleportTimer(3.0f)
 {
 	SeedRandOnce();
 }
 
 NGJ::Enemy::~Enemy() {}
 
-void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* map) {
+void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* map,
+	const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
 	if (isDead) {
 		state = EnemyState::Dead;
 		return;
@@ -82,6 +89,17 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* m
 		bulletTimer -= deltaTime;
 		if (bulletTimer < 0.0f) bulletTimer = 0.0f;
 	}
+	if (dashCooldownTimer > 0.0f) {
+		dashCooldownTimer -= deltaTime;
+		if (dashCooldownTimer < 0.0f) dashCooldownTimer = 0.0f;
+	}
+	if (dashStopTimer > 0.0f) {
+		dashStopTimer -= deltaTime;
+		if (dashStopTimer < 0.0f) dashStopTimer = 0.0f;
+	}
+	if (name == "Assassin") {
+		assassinTeleportTimer -= deltaTime;
+	}
 
 	UpdateState(playerPosition, map);
 
@@ -93,7 +111,7 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* m
 		UpdatePatrol(deltaTime, map);
 		break;
 	case NGJ::EnemyState::Chase:
-		UpdateChase(deltaTime, playerPosition, map);
+		UpdateChase(deltaTime, playerPosition, map, viewMin, viewMax);
 		break;
 	case NGJ::EnemyState::Attack:
 		UpdateAttack(deltaTime, playerPosition);
@@ -172,7 +190,123 @@ void NGJ::Enemy::UpdatePatrol(float deltaTime, Map* map) {
 	if (dist <= 4.0f) ChooseNewPatrolTarget(map); else MoveTowards(patrolTarget, deltaTime, map);
 }
 
-void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, Map* map) {
+void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, Map* map,
+	const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
+	// Assassin 特性：移動慢，但每 1~2 秒瞬移到玩家背後
+	if (name == "Assassin") {
+		if (assassinTeleportTimer <= 0.0f) {
+			bool assassinInView = false;
+			if (viewMin && viewMax) {
+				assassinInView = (position.x >= viewMin->x && position.x <= viewMax->x &&
+					position.y >= viewMin->y && position.y <= viewMax->y);
+			}
+
+			if (assassinInView) {
+				NGJ::Vec2 dirToPlayer = playerPosition.Sub(position).Normalized();
+				if (std::abs(dirToPlayer.x) > 1e-6f || std::abs(dirToPlayer.y) > 1e-6f) {
+					float backDistance = attackRange - 2.0f;
+					if (backDistance < 6.0f) backDistance = 6.0f;
+					NGJ::Vec2 teleportTarget = playerPosition.Add(dirToPlayer.Mul(backDistance));
+
+					bool canTeleport = true;
+					if (map) {
+						float r = 12.0f;
+						float sideR = r * 0.7f;
+						if (map->IsWall(teleportTarget.x, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x - sideR, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x + sideR, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x, teleportTarget.y - sideR) ||
+							map->IsWall(teleportTarget.x, teleportTarget.y + sideR)) {
+							canTeleport = false;
+						}
+					}
+
+					if (canTeleport) {
+						position = teleportTarget;
+						state = NGJ::EnemyState::Attack;
+						attackTimer = 0.3f; // 瞬移後延遲 0.3 秒再能攻擊
+					}
+				}
+			}
+
+			assassinTeleportTimer = 3.0f;
+			return;
+		}
+	}
+
+	// Wolf 特性：中距離時有機率快速滑行到玩家前方，接著停頓 0.3 秒
+	if (name == "Wolf") {
+		if (dashStopTimer > 0.0f) return;
+
+		if (isDashing) {
+			NGJ::Vec2 toTarget = dashTarget.Sub(position);
+			float remain = NGJ::Vec2::Distance(position, dashTarget);
+			if (remain <= 3.0f) {
+				position = dashTarget;
+				isDashing = false;
+				dashStopTimer = 0.3f;
+				return;
+			}
+
+			NGJ::Vec2 dir = toTarget.Normalized();
+			float step = dashSpeed * deltaTime;
+			if (step > remain) step = remain;
+			NGJ::Vec2 nextPos = position.Add(dir.Mul(step));
+
+			bool blocked = false;
+			if (map) {
+				float r = 12.0f;
+				float sideR = r * 0.7f;
+				if (map->IsWall(nextPos.x + r, nextPos.y) || map->IsWall(nextPos.x - r, nextPos.y) ||
+					map->IsWall(nextPos.x, nextPos.y + r) || map->IsWall(nextPos.x, nextPos.y - r) ||
+					map->IsWall(nextPos.x + sideR, nextPos.y + sideR) || map->IsWall(nextPos.x - sideR, nextPos.y - sideR)) {
+					blocked = true;
+				}
+			}
+
+			if (blocked) {
+				isDashing = false;
+				dashCooldownTimer = 1.0f;
+			}
+			else {
+				position = nextPos;
+			}
+			return;
+		}
+
+		float dist = NGJ::Vec2::Distance(position, playerPosition);
+		if (dist > 90.0f && dist < 260.0f && dashCooldownTimer <= 0.0f) {
+			// 約 12% 機率觸發衝刺
+			if ((std::rand() % 100) < 12) {
+				NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+				if (std::abs(dir.x) > 1e-6f || std::abs(dir.y) > 1e-6f) {
+					// 目標點放在玩家前方，保留距離避免直接貼到玩家
+					float keepDistance = attackRange + 10.0f;
+					dashTarget = playerPosition.Sub(dir.Mul(keepDistance));
+
+					bool canDash = true;
+					if (map) {
+						float r = 12.0f;
+						float sideR = r * 0.7f;
+						if (map->IsWall(dashTarget.x, dashTarget.y) ||
+							map->IsWall(dashTarget.x - sideR, dashTarget.y) ||
+							map->IsWall(dashTarget.x + sideR, dashTarget.y) ||
+							map->IsWall(dashTarget.x, dashTarget.y - sideR) ||
+							map->IsWall(dashTarget.x, dashTarget.y + sideR)) {
+							canDash = false;
+						}
+					}
+
+					if (canDash) {
+						isDashing = true;
+						dashCooldownTimer = 2.2f;
+						return;
+					}
+				}
+			}
+		}
+	}
+
 	MoveTowards(playerPosition, deltaTime, map);
 }
 
