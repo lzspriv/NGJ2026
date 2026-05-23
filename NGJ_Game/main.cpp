@@ -3,6 +3,10 @@
 #include "AssetManager.h"
 #include "Map.h"
 #include "Player.h"
+#include "Enemy.h"
+#include <vector>
+#include <ctime>
+#include <cstdlib>
 
 int main() {
 	// 使用 Player 的視窗初始值以保持先前行為
@@ -34,6 +38,20 @@ int main() {
 
 	Camera2D camera = { 0 };
 	camera.zoom = 1.0f;
+
+	// 怪物管理（簡單示例）
+	std::vector<NGJ::Enemy> enemies;
+	// 若要更容易看見怪物，從地圖的玩家起始位置附近刷怪
+	// seed 隨機
+	std::srand((unsigned int)std::time(nullptr));
+	NGJ::Vec2 start = NGJ::Vec2(dungeonMap.GetPlayerStartPos().x, dungeonMap.GetPlayerStartPos().y);
+	auto spawnNear = [&](float dx, float dy) {
+		return NGJ::Vec2(start.x + dx, start.y + dy);
+	};
+	enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, spawnNear(0.0f, 0.0f));
+	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, spawnNear(120.0f, 0.0f));
+	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, spawnNear(-100.0f, 40.0f));
+	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, spawnNear(40.0f, -80.0f));
 
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
@@ -261,6 +279,14 @@ int main() {
 		player.ProcessCombatInput();
 		player.UpdateCombat(dt);
 
+		// 更新敵人狀態（使用世界座標的 player 位置）
+		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
+		for (auto &e : enemies) {
+			e.Update(dt, playerWorldPos);
+			// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
+			// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+		}
+
 		camera.target = playerMapPos;
 		camera.offset = playerPos;
 
@@ -287,7 +313,43 @@ int main() {
 				Vector2 origin = { 0.0f, 2.5f };
 				DrawRectanglePro(swordRect, origin, player.sword.currentAngle, RAYWHITE);
 			}
+
+			// Draw enemies in world-space
+			for (const auto &e : enemies) {
+				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
+				Color col = GRAY;
+				switch (e.GetState()) {
+				case NGJ::EnemyState::Idle: col = LIGHTGRAY; break;
+				case NGJ::EnemyState::Patrol: col = GREEN; break;
+				case NGJ::EnemyState::Chase: col = ORANGE; break;
+				case NGJ::EnemyState::Attack: col = RED; break;
+				case NGJ::EnemyState::Dead: col = DARKGRAY; break;
+				}
+				DrawCircle((int)wp.x, (int)wp.y, 12, col);
+				int barW = 30; int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
+				DrawRectangle((int)wp.x - barW/2, (int)wp.y - 20, barW, 5, DARKGRAY);
+				DrawRectangle((int)wp.x - barW/2, (int)wp.y - 20, hpW, 5, RED);
+				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, BLACK);
+			}
+
 			EndMode2D();
+
+			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
+			if (!enemies.empty()) {
+				const auto &e0 = enemies[0];
+				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
+				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
+				DrawCircleV(eScreen, 6.0f, RED);
+				DrawText(TextFormat("Enemies: %d", (int)enemies.size()), 10, 10, 14, WHITE);
+				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
+				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
+			}
+			// 顯示玩家的 world->screen
+			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
+			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
+			DrawCircleV(pScreen, 5.0f, BLUE);
+			DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
+			DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
 
 			// Draw player at window-local for UI
 			player.playerPos = playerPos;

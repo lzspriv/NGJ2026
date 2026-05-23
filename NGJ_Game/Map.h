@@ -46,6 +46,10 @@ public:
     int GetTotalWidth() const { return mapCols * tileWidth; }
     int GetTotalHeight() const { return mapRows * tileHeight; }
 
+    // Enemy-branch helpers: 提供隨機可刷位置及牆碰撞檢查
+    Vector2 GetRandomFreePosition();
+    bool CheckWallCollision(Vector2 pos, Vector2 size);
+
     void AdvanceLayer();
 };
 

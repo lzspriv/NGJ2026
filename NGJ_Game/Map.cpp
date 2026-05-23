@@ -1,5 +1,7 @@
 #include "Map.h"
 #include <math.h>
+#include <cstdlib>
+#include <ctime>
 
 Map::Map(int screenWidth, int screenHeight) {
     tileWidth = 80;
@@ -207,4 +209,50 @@ void Map::DrawObjects() {
         DrawCircleV(keyPos, 14.0f, GOLD);
         DrawCircleV(keyPos, 8.0f, YELLOW);
     }
+}
+
+// Enemy helpers
+Vector2 Map::GetRandomFreePosition() {
+    static bool seeded = false;
+    if (!seeded) {
+        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        seeded = true;
+    }
+    for (int attempt = 0; attempt < 500; ++attempt) {
+        int ry = std::rand() % mapRows;
+        int rx = std::rand() % mapCols;
+        if (grid[ry][rx] == 0) {
+            float x = rx * tileWidth + tileWidth * 0.5f;
+            float y = ry * tileHeight + tileHeight * 0.5f;
+            return Vector2{ x, y };
+        }
+    }
+    for (int y = 0; y < mapRows; ++y) {
+        for (int x = 0; x < mapCols; ++x) {
+            if (grid[y][x] == 0) return Vector2{ x * tileWidth + tileWidth * 0.5f, y * tileHeight + tileHeight * 0.5f };
+        }
+    }
+    return Vector2{ tileWidth * 0.5f, tileHeight * 0.5f };
+}
+
+bool Map::CheckWallCollision(Vector2 pos, Vector2 size) {
+    float left = pos.x - size.x * 0.5f;
+    float right = pos.x + size.x * 0.5f;
+    float top = pos.y - size.y * 0.5f;
+    float bottom = pos.y + size.y * 0.5f;
+
+    int tx0 = (int)(left / tileWidth);
+    int tx1 = (int)(right / tileWidth);
+    int ty0 = (int)(top / tileHeight);
+    int ty1 = (int)(bottom / tileHeight);
+
+    if (tx0 < 0) tx0 = 0; if (ty0 < 0) ty0 = 0;
+    if (tx1 >= mapCols) tx1 = mapCols - 1; if (ty1 >= mapRows) ty1 = mapRows - 1;
+
+    for (int y = ty0; y <= ty1; ++y) {
+        for (int x = tx0; x <= tx1; ++x) {
+            if (grid[y][x] == 1) return true;
+        }
+    }
+    return false;
 }
