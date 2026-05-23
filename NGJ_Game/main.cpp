@@ -153,11 +153,14 @@ int main() {
 		AssetManager::EmitParticle(playerPos, SKYBLUE, 3.0f);
 		AssetManager::UpdateParticles();
 
+		Font customFont = AssetManager::GetGameFont();
+
 		// 繪製畫面
 		BeginDrawing();
 		ClearBackground(BLACK);
-
-		DrawText("4-Directional Expansion!", 20, 20, 18, GREEN);
+		
+		DrawText("4-Directional Expansion!", 20, 50, 18, GREEN);
+		DrawTextEx(customFont, "WASD to move, space to *beep", (Vector2) (20.0f,50.0f), 32.0f, 2.0f, WHITE);
 
 		// 畫出主角小藍方塊
 		AssetManager::DrawParticles();

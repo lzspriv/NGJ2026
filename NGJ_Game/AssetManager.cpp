@@ -61,7 +61,7 @@ void AssetManager::LoadAllAssets() {
     soundPickup = LoadSound("assets/pickup.wav");
 
     // 載入字體
-    gameFont = LoadFont("assets/hacker_font.ttf");
+    gameFont = LoadFont("assets/mainfont.otf");
 
     //粒子效果
     for (int i = 0; i < MAX_PARTICLES; i++) {
