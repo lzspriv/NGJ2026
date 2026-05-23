@@ -1,6 +1,7 @@
 // Raylib visual test harness: spawn window and enemies
 #include "raylib.h"
 #include "Enemy.h"
+#include "Map.h"
 #include <vector>
 #include <string>
 
@@ -15,16 +16,25 @@ int main() {
     float playerSpeed = 200.0f; // px/s
     int playerHP = 30;
 
-    // Spawn some enemies around the room
-    std::vector<NGJ::Enemy> enemies;
-    enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, NGJ::Vec2(100.0f, 100.0f));
-    enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, NGJ::Vec2(700.0f, 120.0f));
-    enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, NGJ::Vec2(150.0f, 500.0f));
-    enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, NGJ::Vec2(650.0f, 420.0f));
+    // Map manager: initialize and load map
+    MapManager map;
+    map.LoadMapData(1);
 
-    // Set patrol targets for some
-    enemies[0].patrolTarget = NGJ::Vec2(200.0f, 120.0f);
-    enemies[2].patrolTarget = NGJ::Vec2(120.0f, 520.0f);
+    // Spawn some enemies at random free positions on the map
+    std::vector<NGJ::Enemy> enemies;
+    Vector2 pos1 = map.GetRandomFreePosition();
+    Vector2 pos2 = map.GetRandomFreePosition();
+    Vector2 pos3 = map.GetRandomFreePosition();
+    Vector2 pos4 = map.GetRandomFreePosition();
+
+    enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, NGJ::Vec2(pos1.x, pos1.y));
+    enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, NGJ::Vec2(pos2.x, pos2.y));
+    enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, NGJ::Vec2(pos3.x, pos3.y));
+    enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, NGJ::Vec2(pos4.x, pos4.y));
+
+    // Set patrol targets for some (around their spawn)
+    enemies[0].patrolTarget = enemies[0].GetPosition().Add(NGJ::Vec2(100.0f, 20.0f));
+    enemies[2].patrolTarget = enemies[2].GetPosition().Add(NGJ::Vec2(-30.0f, 20.0f));
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();

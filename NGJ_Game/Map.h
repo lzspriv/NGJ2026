@@ -26,6 +26,9 @@ public:
     // 隨機在地圖空地上生成增益道具與鑰匙
     void SpawnItems();
 
+    // 從地圖上的空地隨機取得一個世界座標位置（回傳 Raylib 的 Vector2）
+    Vector2 GetRandomFreePosition();
+
     // 檢查實體（玩家或怪物）是否與牆壁發生碰撞（防止穿牆）
     bool CheckWallCollision(Vector2 pos, Vector2 size);
 
