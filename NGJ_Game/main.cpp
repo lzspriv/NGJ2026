@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "PlatformUtils.h"
+#include "AssetManager.h"
 
 int main() {
 	int currentWidth = 400;
@@ -7,6 +8,7 @@ int main() {
 
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - 4D Window Expand!");
+	AssetManager::LoadAllAssets();
 	SetWindowPosition(500, 300);
 	SetTargetFPS(60);
 
@@ -146,11 +148,12 @@ int main() {
 		DrawText("4-Directional Expansion!", 20, 20, 18, GREEN);
 
 		// 畫出主角小藍方塊
-		DrawRectangleV(playerPos, { 20, 20 }, BLUE);
+		AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
 		EndDrawing();
 	}
 
+	AssetManager::UnloadAllAssets();
 	CloseWindow();
 	return 0;
 }
