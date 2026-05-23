@@ -1,5 +1,5 @@
 #include "raylib.h"
-
+#include "PlatformUtils.h"
 
 int main() {
 	int currentWidth = 400;
@@ -10,6 +10,9 @@ int main() {
 	SetWindowPosition(500, 300);
 	SetTargetFPS(60);
 
+	// 追蹤前一個所在的顯示器索引，若使用者把視窗拖到另一個螢幕，會自動置中
+	int prevMonitor = GetCurrentMonitor();
+
 	Vector2 playerPos = { 200.0f, 200.0f };
 	float playerSpeed = 5.0f;
 
@@ -17,27 +20,57 @@ int main() {
 		// 每一幀取得目前視窗在桌面座標上的絕對位置
 		Vector2 winPos = GetWindowPosition();
 
-		// 預設使用 Raylib 提供的當前 monitor 資訊作為備援
+		// 取得目前 Raylib 所判定的顯示器索引與尺寸
 		int monitor = GetCurrentMonitor();
 		int maxWidth = GetMonitorWidth(monitor);
 		int maxHeight = GetMonitorHeight(monitor);
 
-		// 監視器原點（桌面座標），預設為 0,0（單螢幕或無法取得時）
+		// 當偵測到顯示器改變（使用者把視窗拖到另一個螢幕）時，自動把視窗置中到該顯示器
+		if (monitor != prevMonitor) {
+			// 嘗試使用平台工具取得該顯示器在桌面座標系的矩形
+			int monLeft = 0, monTop = 0, monW = GetMonitorWidth(monitor), monH = GetMonitorHeight(monitor);
+			// 嘗試呼叫本地平臺 helper（Windows 會回傳正確的 monLeft/monTop）
+			if (GetMonitorRectForWindow(GetWindowHandle(), monLeft, monTop, monW, monH)) {
+				// 成功取得
+			}
+
+			// 如果當前視窗尺寸超過目標顯示器，先 clamp 大小，避免被放置到螢幕外
+			if (currentWidth > monW) currentWidth = monW;
+			if (currentHeight > monH) currentHeight = monH;
+
+			int newX = monLeft + (monW - currentWidth) / 2;
+			int newY = monTop + (monH - currentHeight) / 2;
+			// 先設定大小再設定位置，確保置中計算正確
+			SetWindowSize(currentWidth, currentHeight);
+			SetWindowPosition(newX, newY);
+			// 立刻更新 winPos，確保後續基於當前視窗位置的計算正確
+			winPos = GetWindowPosition();
+			prevMonitor = monitor;
+		}
+
+		// 嘗試使用 PlatformUtils 取得此視窗所在顯示器的工作區矩形（桌面座標，不含任務列）以正確計算相對位置
 		int monLeft = 0;
 		int monTop = 0;
-		int monRight = maxWidth;
-		int monBottom = maxHeight;
+		int monW = maxWidth;
+		int monH = maxHeight;
+		// 優先嘗試取得工作區，失敗時退回普通顯示器矩形
+		if (!GetMonitorWorkAreaForWindow(GetWindowHandle(), monLeft, monTop, monW, monH)) {
+			GetMonitorRectForWindow(GetWindowHandle(), monLeft, monTop, monW, monH);
+		}
+		// 如果成功取得，將作為有效的顯示器範圍；否則保留 Raylib 的 monitor 大小，且 monLeft/monTop 為 0
+		bool gotWork = (monW != maxWidth || monH != maxHeight || monLeft != 0 || monTop != 0);
+		if (gotWork) {
+			maxWidth = monW;
+			maxHeight = monH;
+		} else {
+			monLeft = 0;
+			monTop = 0;
+		}
 
-		int relWinX = (int)winPos.x;
-		int relWinY = (int)winPos.y;
-
-		// 在 Windows 平台下，使用 Win32 API 判定視窗實際所屬的顯示器，並取得該顯示器的原點及尺寸。為避免與 WinUser.h 的函式命名衝突
-		// 我們不直接包含 <windows.h>，而改用 GetCurrentMonitor + GetMonitorWidth/GetMonitorHeight 作為較安全的跨平台作法。
-		// 這樣能避免在不同 Windows SDK 與 Raylib 之間的命名衝突。
-		// 若你之後確認要使用 Win32 精確 API，可以把對應邏輯移到獨立平台檔案並加上適當的宏保護。
-		// （此處保留 relWinX/relWinY 為 winPos 的簡單裁切）
-		relWinX = (int)winPos.x;
-		relWinY = (int)winPos.y;
+		// 計算視窗相對於該顯示器原點的座標，用於擴張邏輯
+		int relWinX = (int)winPos.x - monLeft;
+		int relWinY = (int)winPos.y - monTop;
+		// 邊界保護
 		if (relWinX < 0) relWinX = 0;
 		if (relWinY < 0) relWinY = 0;
 		if (relWinX > maxWidth) relWinX = maxWidth;
@@ -79,15 +112,18 @@ int main() {
 		// 3. ⬅️ 往左擴張（只在視窗左邊還有空間時）
 		if (playerPos.x <= 0 && leftAvailable > 0) {
 			int grow = (leftAvailable >= 10) ? 10 : leftAvailable;
-			currentWidth += grow; // 視窗變寬
-			// 把整個視窗往左移 grow 像素，但確保不會移到顯示器左側以外
-			int newPosX = (int)winPos.x - grow;
-			if (newPosX < 0) newPosX = 0;
-			SetWindowPosition(newPosX, (int)winPos.y);
-			// 強迫將視窗大小同步更新
-			SetWindowSize(currentWidth, currentHeight);
+			// 計算相對於該顯示器的新位置（使用 relWinX 避免桌面座標混淆）
+			int newRelX = relWinX - grow;
+			if (newRelX < 0) newRelX = 0; // 不超出顯示器左邊
+			int newPosX = monLeft + newRelX;
+			// 先設定位置再設定大小，避免某些系統在改大小時重定位視窗到主螢幕
+			SetWindowPosition(newPosX, monTop + relWinY);
+			SetWindowSize(currentWidth + grow, currentHeight);
+			currentWidth += grow; // 更新內部尺寸
 			// 因為視窗往左長了 grow 像素，主角在視窗內的相對座標必須右移 grow 像素
 			playerPos.x += (float)grow;
+			// 立刻更新 winPos，避免下一次計算使用舊值
+			winPos = GetWindowPosition();
 		}
 
 		// 4. ⬆️ 往上擴張（只在視窗上邊還有空間時）
