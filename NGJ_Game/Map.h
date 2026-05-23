@@ -29,6 +29,9 @@ private:
     Vector2 doorPos;
     bool doorUnlocked;                      // 當所有3把鑰匙都收集時為true
 
+    std::vector<Vector2> chestPositions;    // 儲存寶箱位置
+    std::vector<bool> chestOpened;          // 追蹤寶箱是否已打開
+
     void GenerateDefaultMapFiles();
     void LoadMapFromImageFile(const char* fileName);
     void InitLayer(DungeonLayer layer);
@@ -46,6 +49,12 @@ public:
     int GetKeysCollected() const { return keysCollected; }
     int GetTotalKeys() const { return 3; }
     bool IsDoorUnlocked() const { return doorUnlocked; }
+
+    // 寶箱相關 getter
+    const std::vector<Vector2>& GetChestPositions() const { return chestPositions; }
+    const std::vector<bool>& GetChestOpened() const { return chestOpened; }
+    int GetChestCount() const { return chestPositions.size(); }
+    void OpenChest(int chestIndex) { if (chestIndex >= 0 && chestIndex < (int)chestOpened.size()) chestOpened[chestIndex] = true; }
     Vector2 GetPlayerStartPos() const { return playerStartPos; }
     bool IsWall(float worldX, float worldY) const;
     int GetTotalWidth() const { return mapCols * tileWidth; }

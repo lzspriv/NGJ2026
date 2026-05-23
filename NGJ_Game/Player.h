@@ -32,6 +32,7 @@ public:
     int maxHp;
     int currentHp;
     int score;
+    float attackRange;      // 攻擊距離（可以通過寶箱獎勵增加）
     std::vector<Bullet> bullets;
 
     AttackMode currentMode;

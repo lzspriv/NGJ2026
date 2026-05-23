@@ -14,6 +14,7 @@ void PlayerManager::InitPlayer() {
     maxHp = 3;
     currentHp = maxHp;
     score = 0;
+    attackRange = 50.0f;   // 預設攻擊距離
     bullets.clear();
 
     currentMode = MODE_SHOOT;

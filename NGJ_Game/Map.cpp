@@ -4,431 +4,644 @@
 #include <ctime>
 
 Map::Map(int screenWidth, int screenHeight) {
-    tileWidth = 50;
-    tileHeight = 50;
-    GenerateDefaultMapFiles();
-    InitLayer(DungeonLayer::LAYER_1);
+	tileWidth = 50;
+	tileHeight = 50;
+	GenerateDefaultMapFiles();
+	InitLayer(DungeonLayer::LAYER_1);
 }
 
 Map::~Map() {}
 
 void Map::GenerateDefaultMapFiles() {
-    const int W = 38;
-    const int H = 22;
+	const int W = 38;
+	const int H = 22;
 
-    // ©ú½T©w¸qÃC¦â¡A¥]¬A Alpha ³q¹D
-    Color WHT = { 255, 255, 255, 255 };
-    Color BLK = { 0, 0, 0, 255 };
-    Color GRN = { 0, 255, 0, 255 };
-    Color BLU = { 0, 0, 255, 255 };
-    Color RED_ = { 255, 0, 0, 255 };
+	Color WHT = { 255, 255, 255, 255 };
+	Color BLK = { 0, 0, 0, 255 };
+	Color GRN = { 0, 255, 0, 255 };
+	Color BLU = { 0, 0, 255, 255 };
+	Color RED_ = { 255, 0, 0, 255 };
+	Color PRP = { 200, 0, 200, 255 };
 
-    if (FileExists("map1.png") && FileExists("map2.png") && FileExists("map3.png") && FileExists("boss.png")) {
-        return;
-    }
+	if (FileExists("map1.png") && FileExists("map2.png") && FileExists("map3.png") && FileExists("boss.png")) {
+		return;
+	}
 
-    // --- 1. map1.png (Classic Maze) ---
-    std::vector<Color> m1(W * H, BLK);
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
-            if (y > 0 && y < H - 1 && x > 0 && x < W - 1) m1[y * W + x] = WHT;
-            if (y == 7 && x > 5 && x < 33) m1[y * W + x] = BLK;
-            if (y == 15 && x > 3 && x < 30) m1[y * W + x] = BLK;
-            if (x == 12 && y > 3 && y < 13)  m1[y * W + x] = BLK;
-            if (x == 25 && y > 8 && y < 18) m1[y * W + x] = BLK;
-        }
-    }
-    // ½T«O¤¤¤ß¦ì¸m(2-3¦æ, 2-3¦C)¬O¸ô
-    m1[2 * W + 2] = WHT;
-    m1[2 * W + 3] = WHT;
-    m1[3 * W + 2] = WHT;
-    m1[3 * W + 3] = WHT;
+	srand((unsigned)time(NULL));
 
-    // ³]¸m°_ÂI(ºñ¦â)¦b¤¤¤ßªþªñ
-    m1[2 * W + 2] = GRN;
+	// Map 1: Classic Maze
+	std::vector<Color> m1(W * H, BLK);
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
+			if (y > 0 && y < H - 1 && x > 0 && x < W - 1) m1[y * W + x] = WHT;
+			if (y == 7 && x > 5 && x < 33) m1[y * W + x] = BLK;
+			if (y == 15 && x > 3 && x < 30) m1[y * W + x] = BLK;
+			if (x == 12 && y > 3 && y < 13) m1[y * W + x] = BLK;
+			if (x == 25 && y > 8 && y < 18) m1[y * W + x] = BLK;
+		}
+	}
+	m1[2 * W + 2] = WHT;
+	m1[2 * W + 3] = WHT;
+	m1[3 * W + 2] = WHT;
+	m1[3 * W + 3] = WHT;
+	m1[2 * W + 2] = GRN;
 
-    // ³]¸m3§âÆ_°Í(ÂÅ¦â)
-    m1[9 * W + 10] = BLU;
-    m1[9 * W + 28] = BLU;
-    m1[17 * W + 19] = BLU;
+	// Add random keys to map1
+	for (int keyCount = 0; keyCount < 3; keyCount++) {
+		bool placed = false;
+		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
+			int randomX = 4 + (rand() % (W - 8));
+			int randomY = 4 + (rand() % (H - 8));
+			int idx = randomY * W + randomX;
 
-    // --- 2. map2.png (Spiral Maze) ---
-    std::vector<Color> m2(W * H, BLK);
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
-            if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m2[y * W + x] = WHT;
-            if (y == 3 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
-            if (x == W - 4 && y >= 3 && y <= H - 4) m2[y * W + x] = BLK;
-            if (y == H - 4 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
-            if (x == 3 && y >= 6 && y <= H - 4) m2[y * W + x] = BLK;
-            if (y == 6 && x >= 3 && x <= W - 7) m2[y * W + x] = BLK;
-            if (x == W - 7 && y >= 6 && y <= H - 7) m2[y * W + x] = BLK;
-            if (y == H - 7 && x >= 6 && x <= W - 7) m2[y * W + x] = BLK;
-        }
-    }
-    // ½T«O¤¤¤ß¦ì¸m¬O¸ô
-    m2[2 * W + 2] = WHT;
-    m2[2 * W + 3] = WHT;
-    m2[3 * W + 2] = WHT;
-    m2[3 * W + 3] = WHT;
+			if (m1[idx].r == 255 && m1[idx].g == 255 && m1[idx].b == 255) {
+				bool tooCloseToStart = false;
+				for (int sy = 1; sy < 5; sy++) {
+					for (int sx = 1; sx < 5; sx++) {
+						if (randomX == sx && randomY == sy) tooCloseToStart = true;
+					}
+				}
 
-    // ³]¸m°_ÂI(ºñ¦â)¦b¤¤¤ß
-    m2[2 * W + 2] = GRN;
+				bool overlapped = false;
+				for (int y = 0; y < H && !overlapped; y++) {
+					for (int x = 0; x < W && !overlapped; x++) {
+						Color c = m1[y * W + x];
+						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+							(c.r > 150 && c.g < 50 && c.b > 150)) {
+							if (x == randomX && y == randomY) overlapped = true;
+						}
+					}
+				}
 
-    // ³]¸m3§âÆ_°Í(ÂÅ¦â)
-    m2[7 * W + 12] = BLU;
-    m2[12 * W + 28] = BLU;
-    m2[18 * W + 10] = BLU;
+				if (!tooCloseToStart && !overlapped) {
+					m1[idx] = BLU;
+					placed = true;
+				}
+			}
+		}
+	}
 
-    // --- 3. map3.png (Rooms Maze) ---
-    std::vector<Color> m3(W * H, BLK);
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
-            if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m3[y * W + x] = WHT;
-            if (x == 12 || x == 25) m3[y * W + x] = BLK;
-            if (y == 11) m3[y * W + x] = BLK;
-        }
-    }
-    m3[5 * W + 12] = WHT; m3[16 * W + 12] = WHT; m3[6 * W + 25] = WHT; m3[11 * W + 6] = WHT; m3[11 * W + 18] = WHT; m3[11 * W + 32] = WHT;
+	// Add random chest to map1
+	bool chestPlaced = false;
+	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
+		int randomX = 4 + (rand() % (W - 8));
+		int randomY = 4 + (rand() % (H - 8));
+		int idx = randomY * W + randomX;
 
-    // ½T«O¤¤¤ß¦ì¸m¬O¸ô
-    m3[2 * W + 2] = WHT;
-    m3[2 * W + 3] = WHT;
-    m3[3 * W + 2] = WHT;
-    m3[3 * W + 3] = WHT;
+		if (m1[idx].r == 255 && m1[idx].g == 255 && m1[idx].b == 255) {
+			bool tooCloseToStart = false;
+			for (int sy = 1; sy < 5; sy++) {
+				for (int sx = 1; sx < 5; sx++) {
+					if (randomX == sx && randomY == sy) tooCloseToStart = true;
+				}
+			}
 
-    // ³]¸m°_ÂI(ºñ¦â)¦b¤¤¤ß
-    m3[2 * W + 2] = GRN;
+			bool overlapped = false;
+			for (int y = 0; y < H && !overlapped; y++) {
+				for (int x = 0; x < W && !overlapped; x++) {
+					Color c = m1[y * W + x];
+					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+						(c.r > 150 && c.g < 50 && c.b > 150)) {
+						if (x == randomX && y == randomY) overlapped = true;
+					}
+				}
+			}
 
-    // ³]¸m3§âÆ_°Í(ÂÅ¦â)
-    m3[8 * W + 6] = BLU;
-    m3[8 * W + 22] = BLU;
-    m3[16 * W + 32] = BLU;
+			if (!tooCloseToStart && !overlapped) {
+				m1[idx] = PRP;
+				chestPlaced = true;
+			}
+		}
+	}
 
-    // --- 4. boss.png (Boss Arena) ---
-    std::vector<Color> mb(W * H, WHT);
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
-            if (x < 8 && y < 6) mb[y * W + x] = BLK;
-            if (x > 29 && y < 6) mb[y * W + x] = BLK;
-            if (x < 8 && y > 15) mb[y * W + x] = BLK;
-            if (x > 29 && y > 15) mb[y * W + x] = BLK;
-            if (y == 0 || y == H - 1 || x == 0 || x == W - 1) mb[y * W + x] = BLK;
-        }
-    }
-    // ½T«O¤¤¤ß¦ì¸m¬O¸ô
-    mb[2 * W + 2] = WHT;
-    mb[2 * W + 3] = WHT;
-    mb[3 * W + 2] = WHT;
-    mb[3 * W + 3] = WHT;
+	// Map 2: Spiral Maze
+	std::vector<Color> m2(W * H, BLK);
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
+			if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m2[y * W + x] = WHT;
+			if (y == 3 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
+			if (x == W - 4 && y >= 3 && y <= H - 4) m2[y * W + x] = BLK;
+			if (y == H - 4 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
+			if (x == 3 && y >= 6 && y <= H - 4) m2[y * W + x] = BLK;
+			if (y == 6 && x >= 3 && x <= W - 7) m2[y * W + x] = BLK;
+			if (x == W - 7 && y >= 6 && y <= H - 7) m2[y * W + x] = BLK;
+			if (y == H - 7 && x >= 6 && x <= W - 7) m2[y * W + x] = BLK;
+		}
+	}
+	m2[2 * W + 2] = WHT;
+	m2[2 * W + 3] = WHT;
+	m2[3 * W + 2] = WHT;
+	m2[3 * W + 3] = WHT;
+	m2[2 * W + 2] = GRN;
 
-    // Boss©Ð¶¡°_ÂI¦b¤¤¤ß
-    mb[2 * W + 2] = GRN;
+	// Add random keys to map2
+	for (int keyCount = 0; keyCount < 3; keyCount++) {
+		bool placed = false;
+		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
+			int randomX = 4 + (rand() % (W - 8));
+			int randomY = 4 + (rand() % (H - 8));
+			int idx = randomY * W + randomX;
 
-    // Boss©Ð¶¡ªº3§âÆ_°Í(ÂÅ¦â)
-    mb[7 * W + 10] = BLU;
-    mb[7 * W + 28] = BLU;
-    mb[14 * W + 19] = BLU;
+			if (m2[idx].r == 255 && m2[idx].g == 255 && m2[idx].b == 255) {
+				bool tooCloseToStart = false;
+				for (int sy = 1; sy < 5; sy++) {
+					for (int sx = 1; sx < 5; sx++) {
+						if (randomX == sx && randomY == sy) tooCloseToStart = true;
+					}
+				}
 
-    const char* names[4] = { "map1.png", "map2.png", "map3.png", "boss.png" };
-    std::vector<Color>* dataPtrs[4] = { &m1, &m2, &m3, &mb };
+				bool overlapped = false;
+				for (int y = 0; y < H && !overlapped; y++) {
+					for (int x = 0; x < W && !overlapped; x++) {
+						Color c = m2[y * W + x];
+						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+							(c.r > 150 && c.g < 50 && c.b > 150)) {
+							if (x == randomX && y == randomY) overlapped = true;
+						}
+					}
+				}
 
-    for (int i = 0; i < 4; i++) {
-        // ¦b¾É¥X«e¡AÀH¾÷­«·s©ñ¸mªùªº¦ì¸m
-        std::vector<Color>& mapData = *dataPtrs[i];
+				if (!tooCloseToStart && !overlapped) {
+					m2[idx] = BLU;
+					placed = true;
+				}
+			}
+		}
+	}
 
-        // ´M§ä©Ò¦³¬õ¦â¹³¯À¡]ªùªºÂÂ¦ì¸m¡^¨Ã´À´«¬°¥Õ¦â
-        for (int j = 0; j < W * H; j++) {
-            if (mapData[j].r > 200 && mapData[j].g < 50 && mapData[j].b < 50) {
-                mapData[j] = WHT;
-            }
-        }
+	chestPlaced = false;
+	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
+		int randomX = 4 + (rand() % (W - 8));
+		int randomY = 4 + (rand() % (H - 8));
+		int idx = randomY * W + randomX;
 
-        // ÀH¾÷¿ï¾Ü¤@­Ó¥i³q¦æªº¦ì¸m©ñ¸mªù
-        bool doorPlaced = false;
-        for (int attempts = 0; attempts < 500 && !doorPlaced; attempts++) {
-            int randomX = 3 + (rand() % (W - 6));  // Á×§KÃä¬É
-            int randomY = 3 + (rand() % (H - 6));
-            int idx = randomY * W + randomX;
+		if (m2[idx].r == 255 && m2[idx].g == 255 && m2[idx].b == 255) {
+			bool tooCloseToStart = false;
+			for (int sy = 1; sy < 5; sy++) {
+				for (int sx = 1; sx < 5; sx++) {
+					if (randomX == sx && randomY == sy) tooCloseToStart = true;
+				}
+			}
 
-            // ÀË¬d¸Ó¦ì¸m¬O§_¬°¥Õ¦â¡]¥i³q¦æ¡^¥B¤£¬Oºñ¦â¡]°_ÂI¡^©MÂÅ¦â¡]Æ_°Í¡^
-            if (mapData[idx].r == 255 && mapData[idx].g == 255 && mapData[idx].b == 255) {
-                // ½T«O¨¬°÷»·Â÷°_ÂI¡]¦Ü¤Ö¶ZÂ÷¬°5¡^
-                bool tooCloseToStart = false;
-                for (int y = 0; y < H; y++) {
-                    for (int x = 0; x < W; x++) {
-                        if (mapData[y * W + x].r == 0 && mapData[y * W + x].g > 200 && mapData[y * W + x].b == 0) {
-                            // §ä¨ì¤F°_ÂI
-                            int distSq = (randomX - x) * (randomX - x) + (randomY - y) * (randomY - y);
-                            if (distSq < 25) { // ¶ZÂ÷¤p©ó5­Ó¥Ë¤ù
-                                tooCloseToStart = true;
-                            }
-                        }
-                    }
-                }
+			bool overlapped = false;
+			for (int y = 0; y < H && !overlapped; y++) {
+				for (int x = 0; x < W && !overlapped; x++) {
+					Color c = m2[y * W + x];
+					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+						(c.r > 150 && c.g < 50 && c.b > 150)) {
+						if (x == randomX && y == randomY) overlapped = true;
+					}
+				}
+			}
 
-                if (!tooCloseToStart) {
-                    mapData[idx] = RED_;
-                    doorPlaced = true;
-                }
-            }
-        }
+			if (!tooCloseToStart && !overlapped) {
+				m2[idx] = PRP;
+				chestPlaced = true;
+			}
+		}
+	}
 
-        // ¦pªGÀH¾÷©ñ¸m¥¢±Ñ¡A´N¥Î¹w³]¦ì¸m
-        if (!doorPlaced) {
-            mapData[11 * W + 22] = RED_;
-        }
+	// Map 3: Rooms Maze
+	std::vector<Color> m3(W * H, BLK);
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
+			if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m3[y * W + x] = WHT;
+			if (x == 12 || x == 25) m3[y * W + x] = BLK;
+			if (y == 11) m3[y * W + x] = BLK;
+		}
+	}
+	m3[5 * W + 12] = WHT;
+	m3[16 * W + 12] = WHT;
+	m3[6 * W + 25] = WHT;
+	m3[11 * W + 6] = WHT;
+	m3[11 * W + 18] = WHT;
+	m3[11 * W + 32] = WHT;
+	m3[2 * W + 2] = WHT;
+	m3[2 * W + 3] = WHT;
+	m3[3 * W + 2] = WHT;
+	m3[3 * W + 3] = WHT;
+	m3[2 * W + 2] = GRN;
 
-        // ³Ð«Ø¤@­ÓÂ²³æªº¹Ï¹³¡A¨C­Ó¹³¯À¹ïÀ³¤@­Ó¥Ë¤ù
-        Image img = { 0 };
-        img.width = W;
-        img.height = H;
-        img.mipmaps = 1;
-        img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	// Add random keys to map3
+	for (int keyCount = 0; keyCount < 3; keyCount++) {
+		bool placed = false;
+		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
+			int randomX = 4 + (rand() % (W - 8));
+			int randomY = 4 + (rand() % (H - 8));
+			int idx = randomY * W + randomX;
 
-        // ¤À°t¤º¦s
-        img.data = malloc(W * H * sizeof(Color));
+			if (m3[idx].r == 255 && m3[idx].g == 255 && m3[idx].b == 255) {
+				bool tooCloseToStart = false;
+				for (int sy = 1; sy < 5; sy++) {
+					for (int sx = 1; sx < 5; sx++) {
+						if (randomX == sx && randomY == sy) tooCloseToStart = true;
+					}
+				}
 
-        // ½Æ»s¹³¯À¼Æ¾Ú
-        Color* imgData = (Color*)img.data;
-        for (int j = 0; j < W * H; j++) {
-            imgData[j] = (*dataPtrs[i])[j];
-        }
+				bool overlapped = false;
+				for (int y = 0; y < H && !overlapped; y++) {
+					for (int x = 0; x < W && !overlapped; x++) {
+						Color c = m3[y * W + x];
+						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+							(c.r > 150 && c.g < 50 && c.b > 150)) {
+							if (x == randomX && y == randomY) overlapped = true;
+						}
+					}
+				}
 
-        ExportImage(img, names[i]);
-        free(img.data);
-    }
+				if (!tooCloseToStart && !overlapped) {
+					m3[idx] = BLU;
+					placed = true;
+				}
+			}
+		}
+	}
+
+	chestPlaced = false;
+	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
+		int randomX = 4 + (rand() % (W - 8));
+		int randomY = 4 + (rand() % (H - 8));
+		int idx = randomY * W + randomX;
+
+		if (m3[idx].r == 255 && m3[idx].g == 255 && m3[idx].b == 255) {
+			bool tooCloseToStart = false;
+			for (int sy = 1; sy < 5; sy++) {
+				for (int sx = 1; sx < 5; sx++) {
+					if (randomX == sx && randomY == sy) tooCloseToStart = true;
+				}
+			}
+
+			bool overlapped = false;
+			for (int y = 0; y < H && !overlapped; y++) {
+				for (int x = 0; x < W && !overlapped; x++) {
+					Color c = m3[y * W + x];
+					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+						(c.r > 150 && c.g < 50 && c.b > 150)) {
+						if (x == randomX && y == randomY) overlapped = true;
+					}
+				}
+			}
+
+			if (!tooCloseToStart && !overlapped) {
+				m3[idx] = PRP;
+				chestPlaced = true;
+			}
+		}
+	}
+
+	// Map 4: Boss Arena
+	std::vector<Color> mb(W * H, WHT);
+	for (int y = 0; y < H; y++) {
+		for (int x = 0; x < W; x++) {
+			if (x < 8 && y < 6) mb[y * W + x] = BLK;
+			if (x > 29 && y < 6) mb[y * W + x] = BLK;
+			if (x < 8 && y > 15) mb[y * W + x] = BLK;
+			if (x > 29 && y > 15) mb[y * W + x] = BLK;
+			if (y == 0 || y == H - 1 || x == 0 || x == W - 1) mb[y * W + x] = BLK;
+		}
+	}
+	mb[2 * W + 2] = WHT;
+	mb[2 * W + 3] = WHT;
+	mb[3 * W + 2] = WHT;
+	mb[3 * W + 3] = WHT;
+	mb[2 * W + 2] = GRN;
+
+	// Add random keys to boss map
+	for (int keyCount = 0; keyCount < 3; keyCount++) {
+		bool placed = false;
+		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
+			int randomX = 4 + (rand() % (W - 8));
+			int randomY = 4 + (rand() % (H - 8));
+			int idx = randomY * W + randomX;
+
+			if (mb[idx].r == 255 && mb[idx].g == 255 && mb[idx].b == 255) {
+				bool tooCloseToStart = false;
+				for (int sy = 1; sy < 5; sy++) {
+					for (int sx = 1; sx < 5; sx++) {
+						if (randomX == sx && randomY == sy) tooCloseToStart = true;
+					}
+				}
+
+				bool overlapped = false;
+				for (int y = 0; y < H && !overlapped; y++) {
+					for (int x = 0; x < W && !overlapped; x++) {
+						Color c = mb[y * W + x];
+						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+							(c.r > 150 && c.g < 50 && c.b > 150)) {
+							if (x == randomX && y == randomY) overlapped = true;
+						}
+					}
+				}
+
+				if (!tooCloseToStart && !overlapped) {
+					mb[idx] = BLU;
+					placed = true;
+				}
+			}
+		}
+	}
+
+	chestPlaced = false;
+	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
+		int randomX = 4 + (rand() % (W - 8));
+		int randomY = 4 + (rand() % (H - 8));
+		int idx = randomY * W + randomX;
+
+		if (mb[idx].r == 255 && mb[idx].g == 255 && mb[idx].b == 255) {
+			bool tooCloseToStart = false;
+			for (int sy = 1; sy < 5; sy++) {
+				for (int sx = 1; sx < 5; sx++) {
+					if (randomX == sx && randomY == sy) tooCloseToStart = true;
+				}
+			}
+
+			bool overlapped = false;
+			for (int y = 0; y < H && !overlapped; y++) {
+				for (int x = 0; x < W && !overlapped; x++) {
+					Color c = mb[y * W + x];
+					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
+						(c.r > 150 && c.g < 50 && c.b > 150)) {
+						if (x == randomX && y == randomY) overlapped = true;
+					}
+				}
+			}
+
+			if (!tooCloseToStart && !overlapped) {
+				mb[idx] = PRP;
+				chestPlaced = true;
+			}
+		}
+	}
+
+	const char* names[4] = { "map1.png", "map2.png", "map3.png", "boss.png" };
+	std::vector<Color>* dataPtrs[4] = { &m1, &m2, &m3, &mb };
+
+	for (int i = 0; i < 4; i++) {
+		std::vector<Color>& mapData = *dataPtrs[i];
+
+		// Place door randomly
+		bool doorPlaced = false;
+		for (int attempts = 0; attempts < 500 && !doorPlaced; attempts++) {
+			int randomX = 3 + (rand() % (W - 6));
+			int randomY = 3 + (rand() % (H - 6));
+			int idx = randomY * W + randomX;
+
+			if (mapData[idx].r == 255 && mapData[idx].g == 255 && mapData[idx].b == 255) {
+				bool tooCloseToStart = false;
+				for (int y = 0; y < H; y++) {
+					for (int x = 0; x < W; x++) {
+						if (mapData[y * W + x].r == 0 && mapData[y * W + x].g > 200 && mapData[y * W + x].b == 0) {
+							int distSq = (randomX - x) * (randomX - x) + (randomY - y) * (randomY - y);
+							if (distSq < 25) {
+								tooCloseToStart = true;
+							}
+						}
+					}
+				}
+
+				if (!tooCloseToStart) {
+					mapData[idx] = RED_;
+					doorPlaced = true;
+				}
+			}
+		}
+
+		if (!doorPlaced) {
+			mapData[11 * W + 22] = RED_;
+		}
+
+		// Export image
+		Image img = GenImageColor(W, H, BLK);
+		Color* imgData = (Color*)img.data;
+
+		for (int j = 0; j < W * H; j++) {
+			imgData[j] = mapData[j];
+		}
+
+		ExportImage(img, names[i]);
+		UnloadImage(img);
+	}
 }
 
 void Map::LoadMapFromImageFile(const char* fileName) {
-    Image mapImg = LoadImage(fileName);
-    mapRows = mapImg.height;
-    mapCols = mapImg.width;
+	Image mapImg = LoadImage(fileName);
+	mapRows = mapImg.height;
+	mapCols = mapImg.width;
 
-    grid.assign(mapRows, std::vector<int>(mapCols, 0));
-    keyPositions.clear();
-    keyCollected.clear();
+	grid.assign(mapRows, std::vector<int>(mapCols, 0));
+	keyPositions.clear();
+	keyCollected.clear();
+	chestPositions.clear();
+	chestOpened.clear();
 
-    for (int y = 0; y < mapRows; y++) {
-        for (int x = 0; x < mapCols; x++) {
-            Color pixel = GetImageColor(mapImg, x, y);
+	for (int y = 0; y < mapRows; y++) {
+		for (int x = 0; x < mapCols; x++) {
+			Color pixel = GetImageColor(mapImg, x, y);
 
-            if (pixel.r == 0 && pixel.g == 0 && pixel.b == 0) {
-                grid[y][x] = 1;
-            }
-            else if (pixel.g > 200 && pixel.r < 50 && pixel.b < 50) {
-                playerStartPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
-                grid[y][x] = 0;
-            }
-            else if (pixel.b > 200 && pixel.r < 50 && pixel.g < 50) {
-                // ÂÅ¦âªí¥ÜÆ_°Í - ¤ä´©¦h­ÓÆ_°Í
-                keyPositions.push_back({ (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f });
-                keyCollected.push_back(false);
-                grid[y][x] = 0;
-            }
-            else if (pixel.r > 200 && pixel.g < 50 && pixel.b < 50) {
-                doorPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
-                grid[y][x] = 0;
-            }
-            else {
-                grid[y][x] = 0;
-            }
-        }
-    }
-    UnloadImage(mapImg);
+			if (pixel.r == 0 && pixel.g == 0 && pixel.b == 0) {
+				grid[y][x] = 1;
+			}
+			else if (pixel.g > 200 && pixel.r < 50 && pixel.b < 50) {
+				playerStartPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
+				grid[y][x] = 0;
+			}
+			else if (pixel.b > 200 && pixel.r < 50 && pixel.g < 50) {
+				// Blue = Keys
+				keyPositions.push_back({ (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f });
+				keyCollected.push_back(false);
+				grid[y][x] = 0;
+			}
+			else if (pixel.r > 150 && pixel.g < 50 && pixel.b > 150) {
+				// Purple = Chest
+				chestPositions.push_back({ (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f });
+				chestOpened.push_back(false);
+				grid[y][x] = 0;
+			}
+			else if (pixel.r > 200 && pixel.g < 50 && pixel.b < 50) {
+				// Red = Door
+				doorPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
+				grid[y][x] = 0;
+			}
+			else {
+				grid[y][x] = 0;
+			}
+		}
+	}
+	UnloadImage(mapImg);
 }
 
 void Map::InitLayer(DungeonLayer layer) {
-    currentLayer = layer;
-    keysCollected = 0;
-    doorUnlocked = false;
-    playerStartPos = { 120.0f, 120.0f };
+	currentLayer = layer;
+	keysCollected = 0;
+	doorUnlocked = false;
+	playerStartPos = { 120.0f, 120.0f };
 
-    if (layer == DungeonLayer::LAYER_1) LoadMapFromImageFile("map1.png");
-    else if (layer == DungeonLayer::LAYER_2) LoadMapFromImageFile("map2.png");
-    else if (layer == DungeonLayer::LAYER_3) LoadMapFromImageFile("map3.png");
-    else if (layer == DungeonLayer::BOSS_ROOM) LoadMapFromImageFile("boss.png");
-}
-
-bool Map::IsWall(float worldX, float worldY) const {
-    int cellX = (int)(worldX / tileWidth);
-    int cellY = (int)(worldY / tileHeight);
-    if (cellX < 0 || cellX >= mapCols || cellY < 0 || cellY >= mapRows) return true;
-    return grid[cellY][cellX] == 1;
+	if (layer == DungeonLayer::LAYER_1) LoadMapFromImageFile("map1.png");
+	else if (layer == DungeonLayer::LAYER_2) LoadMapFromImageFile("map2.png");
+	else if (layer == DungeonLayer::LAYER_3) LoadMapFromImageFile("map3.png");
+	else if (layer == DungeonLayer::BOSS_ROOM) LoadMapFromImageFile("boss.png");
 }
 
 void Map::Update(Vector2 playerMapPos) {
-    if (currentLayer == DungeonLayer::VICTORY) return;
+	// Check key collection
+	for (size_t i = 0; i < keyPositions.size(); i++) {
+		if (!keyCollected[i]) {
+			float distToKey = sqrtf(powf(playerMapPos.x - keyPositions[i].x, 2) + powf(playerMapPos.y - keyPositions[i].y, 2));
+			if (distToKey < 20.0f) {
+				keyCollected[i] = true;
+				keysCollected++;
 
-    // ÀË¬d¬O§_¦¬¶°¨ì¥¼¦¬¶°ªºÆ_°Í
-    for (size_t i = 0; i < keyPositions.size(); i++) {
-        if (!keyCollected[i]) {
-            float distToKey = sqrtf(powf(playerMapPos.x - keyPositions[i].x, 2) + powf(playerMapPos.y - keyPositions[i].y, 2));
-            if (distToKey < 35.0f) {
-                keyCollected[i] = true;
-                keysCollected++;
+				if (keysCollected == (int)keyPositions.size()) {
+					doorUnlocked = true;
+				}
+			}
+		}
+	}
 
-                // ·í©Ò¦³Æ_°Í³£¦¬¶°®É¡A¸ÑÂêªù
-                if (keysCollected == (int)keyPositions.size()) {
-                    doorUnlocked = true;
-                }
-            }
-        }
-    }
-
-    // ÀË¬d¬O§_¥i¥H³q¹Lªù¶i¤J¤U¤@Ãö
-    if (doorUnlocked) {
-        float distToDoor = sqrtf(powf(playerMapPos.x - doorPos.x, 2) + powf(playerMapPos.y - doorPos.y, 2));
-        if (distToDoor < 45.0f) AdvanceLayer();
-    }
-}
-
-void Map::AdvanceLayer() {
-    if (currentLayer == DungeonLayer::LAYER_1) InitLayer(DungeonLayer::LAYER_2);
-    else if (currentLayer == DungeonLayer::LAYER_2) InitLayer(DungeonLayer::LAYER_3);
-    else if (currentLayer == DungeonLayer::LAYER_3) InitLayer(DungeonLayer::BOSS_ROOM);
-    else if (currentLayer == DungeonLayer::BOSS_ROOM) InitLayer(DungeonLayer::VICTORY);
-}
-
-bool Map::IsMapConnected() {
-    // ¨Ï¥Îªx¬x¶ñ¥R(BFS)¨ÓÅçÃÒ©Ò¦³¥i³q¦æ®æ¤l¬O§_³s³q
-    if (mapRows <= 0 || mapCols <= 0) return false;
-
-    // §ä¨ì°_©l¥i³q¦æ®æ¤l
-    int startX = -1, startY = -1;
-    for (int y = 0; y < mapRows && startX == -1; y++) {
-        for (int x = 0; x < mapCols; x++) {
-            if (grid[y][x] == 0) {
-                startX = x;
-                startY = y;
-                break;
-            }
-        }
-    }
-
-    if (startX == -1) return false; // ¨S¦³¥i³q¦æ®æ¤l
-
-    // BFS ³X°Ý©Ò¦³³s³qªº®æ¤l
-    std::vector<std::vector<bool>> visited(mapRows, std::vector<bool>(mapCols, false));
-    std::vector<std::pair<int, int>> queue;
-    queue.push_back({ startX, startY });
-    visited[startY][startX] = true;
-    int connectedCount = 1;
-
-    int dx[] = { -1, 1, 0, 0 };
-    int dy[] = { 0, 0, -1, 1 };
-
-    size_t queueIdx = 0;
-    while (queueIdx < queue.size()) {
-        auto [x, y] = queue[queueIdx++];
-
-        for (int dir = 0; dir < 4; dir++) {
-            int nx = x + dx[dir];
-            int ny = y + dy[dir];
-
-            if (nx >= 0 && nx < mapCols && ny >= 0 && ny < mapRows &&
-                !visited[ny][nx] && grid[ny][nx] == 0) {
-                visited[ny][nx] = true;
-                queue.push_back({ nx, ny });
-                connectedCount++;
-            }
-        }
-    }
-
-    // ­pºâÁ`¦@¦³¦h¤Ö¥i³q¦æ®æ¤l
-    int totalFloor = 0;
-    for (int y = 0; y < mapRows; y++) {
-        for (int x = 0; x < mapCols; x++) {
-            if (grid[y][x] == 0) totalFloor++;
-        }
-    }
-
-    // ¦pªG©Ò¦³¥i³q¦æ®æ¤l³£¬O³s³qªº¡A«h¦a¹Ï³s³q
-    return connectedCount == totalFloor;
+	// Check door collision
+	if (doorUnlocked) {
+		float distToDoor = sqrtf(powf(playerMapPos.x - doorPos.x, 2) + powf(playerMapPos.y - doorPos.y, 2));
+		if (distToDoor < 20.0f) {
+			AdvanceLayer();
+		}
+	}
 }
 
 void Map::DrawBaseMap() {
-    Color wallColor = { 55, 55, 65, 255 };
-    Color floorColor = { 25, 25, 30, 255 };
-
-    if (currentLayer == DungeonLayer::BOSS_ROOM) {
-        wallColor = { 90, 35, 35, 255 };
-        floorColor = { 40, 20, 20, 255 };
-    }
-
-    for (int y = 0; y < mapRows; y++) {
-        for (int x = 0; x < mapCols; x++) {
-            Rectangle rect = { (float)x * tileWidth, (float)y * tileHeight, (float)tileWidth, (float)tileHeight };
-            if (grid[y][x] == 1) {
-                DrawRectangleRec(rect, wallColor);
-                DrawRectangleLinesEx(rect, 1.0f, { 80, 80, 95, 255 });
-            }
-            else {
-                DrawRectangleRec(rect, floorColor);
-            }
-        }
-    }
+	// å…ˆç•«æ‰€æœ‰è·¯é¢ç‚ºç°è‰²
+	for (int y = 0; y < mapRows; y++) {
+		for (int x = 0; x < mapCols; x++) {
+			if (grid[y][x] == 0) {
+				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, LIGHTGRAY);
+			} else {
+				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, BLACK);
+			}
+		}
+	}
 }
 
 void Map::DrawObjects() {
-    if (currentLayer == DungeonLayer::VICTORY) return;
+	// Draw keys
+	for (size_t i = 0; i < keyPositions.size(); i++) {
+		if (!keyCollected[i]) {
+			DrawCircleV(keyPositions[i], 8.0f, YELLOW);
+		}
+	}
 
-    // ªùªºÃC¦â¨ú¨M©ó¬O§_©Ò¦³Æ_°Í³£¤w¦¬¶°
-    Color doorColor = doorUnlocked ? Color{ 0, 200, 120, 255 } : MAROON;
-    DrawRectangleV({ doorPos.x - 25, doorPos.y - 35 }, { 50, 70 }, doorColor);
-    DrawRectangleLinesEx({ doorPos.x - 25, doorPos.y - 35, 50, 70 }, 3.0f, GOLD);
+	// Draw chest
+	for (size_t i = 0; i < chestPositions.size(); i++) {
+		if (!chestOpened[i]) {
+			DrawCircleV(chestPositions[i], 14.0f, GOLD);
+		}
+	}
 
-    // Ã¸»s©Ò¦³¥¼¦¬¶°ªºÆ_°Í
-    for (size_t i = 0; i < keyPositions.size(); i++) {
-        if (!keyCollected[i]) {
-            DrawCircleV(keyPositions[i], 14.0f, GOLD);
-            DrawCircleV(keyPositions[i], 8.0f, YELLOW);
-        }
-    }
+	// Draw door
+	Color doorColor = doorUnlocked ? Color{ 0, 200, 120, 255 } : MAROON;
+	DrawCircleV(doorPos, 14.0f, doorColor);
 }
 
-// Enemy helpers
+bool Map::IsWall(float worldX, float worldY) const {
+	int tileX = (int)(worldX / tileWidth);
+	int tileY = (int)(worldY / tileHeight);
+
+	if (tileX < 0 || tileX >= mapCols || tileY < 0 || tileY >= mapRows) {
+		return true;
+	}
+
+	return grid[tileY][tileX] == 1;
+}
+
 Vector2 Map::GetRandomFreePosition() {
-    static bool seeded = false;
-    if (!seeded) {
-        std::srand(static_cast<unsigned int>(std::time(nullptr)));
-        seeded = true;
-    }
-    for (int attempt = 0; attempt < 500; ++attempt) {
-        int ry = std::rand() % mapRows;
-        int rx = std::rand() % mapCols;
-        if (grid[ry][rx] == 0) {
-            float x = rx * tileWidth + tileWidth * 0.5f;
-            float y = ry * tileHeight + tileHeight * 0.5f;
-            return Vector2{ x, y };
-        }
-    }
-    for (int y = 0; y < mapRows; ++y) {
-        for (int x = 0; x < mapCols; ++x) {
-            if (grid[y][x] == 0) return Vector2{ x * tileWidth + tileWidth * 0.5f, y * tileHeight + tileHeight * 0.5f };
-        }
-    }
-    return Vector2{ tileWidth * 0.5f, tileHeight * 0.5f };
+	Vector2 pos = { 100, 100 };
+	bool found = false;
+
+	for (int attempts = 0; attempts < 100 && !found; attempts++) {
+		int randomX = rand() % mapCols;
+		int randomY = rand() % mapRows;
+
+		if (grid[randomY][randomX] == 0) {
+			pos = { (float)(randomX * tileWidth + tileWidth / 2), (float)(randomY * tileHeight + tileHeight / 2) };
+			found = true;
+		}
+	}
+
+	return pos;
 }
 
 bool Map::CheckWallCollision(Vector2 pos, Vector2 size) {
-    float left = pos.x - size.x * 0.5f;
-    float right = pos.x + size.x * 0.5f;
-    float top = pos.y - size.y * 0.5f;
-    float bottom = pos.y + size.y * 0.5f;
+	float left = pos.x - size.x / 2;
+	float right = pos.x + size.x / 2;
+	float top = pos.y - size.y / 2;
+	float bottom = pos.y + size.y / 2;
 
-    int tx0 = (int)(left / tileWidth);
-    int tx1 = (int)(right / tileWidth);
-    int ty0 = (int)(top / tileHeight);
-    int ty1 = (int)(bottom / tileHeight);
+	return IsWall(left, top) || IsWall(right, top) || IsWall(left, bottom) || IsWall(right, bottom);
+}
 
-    if (tx0 < 0) tx0 = 0; if (ty0 < 0) ty0 = 0;
-    if (tx1 >= mapCols) tx1 = mapCols - 1; if (ty1 >= mapRows) ty1 = mapRows - 1;
+bool Map::IsMapConnected() {
+	if (mapRows <= 0 || mapCols <= 0) return false;
 
-    for (int y = ty0; y <= ty1; ++y) {
-        for (int x = tx0; x <= tx1; ++x) {
-            if (grid[y][x] == 1) return true;
-        }
-    }
-    return false;
+	int startX = -1, startY = -1;
+	for (int y = 0; y < mapRows && startX == -1; y++) {
+		for (int x = 0; x < mapCols; x++) {
+			if (grid[y][x] == 0) {
+				startX = x;
+				startY = y;
+				break;
+			}
+		}
+	}
+
+	if (startX == -1) return false;
+
+	std::vector<std::vector<bool>> visited(mapRows, std::vector<bool>(mapCols, false));
+	std::vector<std::pair<int, int>> queue;
+	queue.push_back({ startX, startY });
+	visited[startY][startX] = true;
+
+	int dx[] = { 0, 0, 1, -1 };
+	int dy[] = { 1, -1, 0, 0 };
+
+	while (!queue.empty()) {
+		auto [x, y] = queue.front();
+		queue.erase(queue.begin());
+
+		for (int i = 0; i < 4; i++) {
+			int nx = x + dx[i];
+			int ny = y + dy[i];
+
+			if (nx >= 0 && nx < mapCols && ny >= 0 && ny < mapRows &&
+				!visited[ny][nx] && grid[ny][nx] == 0) {
+				visited[ny][nx] = true;
+				queue.push_back({ nx, ny });
+			}
+		}
+	}
+
+	int totalFloor = 0;
+	for (int y = 0; y < mapRows; y++) {
+		for (int x = 0; x < mapCols; x++) {
+			if (grid[y][x] == 0) totalFloor++;
+		}
+	}
+
+	int visitedFloor = 0;
+	for (int y = 0; y < mapRows; y++) {
+		for (int x = 0; x < mapCols; x++) {
+			if (visited[y][x]) visitedFloor++;
+		}
+	}
+
+	return visitedFloor == totalFloor;
+}
+
+void Map::AdvanceLayer() {
+	if (currentLayer == DungeonLayer::LAYER_1) {
+		InitLayer(DungeonLayer::LAYER_2);
+	} else if (currentLayer == DungeonLayer::LAYER_2) {
+		InitLayer(DungeonLayer::LAYER_3);
+	} else if (currentLayer == DungeonLayer::LAYER_3) {
+		InitLayer(DungeonLayer::BOSS_ROOM);
+	} else if (currentLayer == DungeonLayer::BOSS_ROOM) {
+		InitLayer(DungeonLayer::VICTORY);
+	}
 }

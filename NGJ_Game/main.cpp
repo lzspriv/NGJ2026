@@ -50,6 +50,12 @@ int main() {
 	Camera2D camera = { 0 };
 	camera.zoom = 1.0f;
 
+	// 寶箱和獎勵系統
+	int currentChestIndex = -1;  // 正在打開的寶箱索引 (-1 表示無)
+	int selectedReward = -1;      // 已選擇的獎勵 (0=血量, 1=速度, 2=距離)
+	bool showRewardUI = false;    // 是否顯示獎勵選擇 UI
+	double rewardUITimer = 0.0;   // 獎勵 UI 顯示計時器
+
 	// 怪物管理（簡單示例）
 	std::vector<NGJ::Enemy> enemies;
 	// 若要更容易看見怪物，從地圖的玩家起始位置附近刷怪
@@ -311,6 +317,71 @@ int main() {
 		Vector2 playerMapPos = { (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
 		dungeonMap.Update(playerMapPos);
 
+		// 寶箱碰撞檢測
+		const auto& chestPositions = dungeonMap.GetChestPositions();
+		const auto& chestOpened = dungeonMap.GetChestOpened();
+
+		for (int i = 0; i < (int)chestPositions.size(); i++) {
+			if (!chestOpened[i]) {
+				float distToChest = sqrtf(powf(playerMapPos.x - chestPositions[i].x, 2) + 
+											  powf(playerMapPos.y - chestPositions[i].y, 2));
+				if (distToChest < 30.0f) {
+					// 玩家碰到寶箱，打開它
+					if (currentChestIndex == -1) {
+						currentChestIndex = i;
+						showRewardUI = true;
+						rewardUITimer = 0.0;
+						selectedReward = -1;
+					}
+				}
+			}
+		}
+
+		// 獎勵 UI 交互
+		if (showRewardUI && currentChestIndex >= 0) {
+			rewardUITimer += dt;
+
+			// 用數字鍵 1/2/3 選擇獎勵，或用方向鍵 + Enter
+			if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_KP_1)) {
+				selectedReward = 0;  // 血量上限 +20
+			} else if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_KP_2)) {
+				selectedReward = 1;  // 移動速度 +1
+			} else if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_KP_3)) {
+				selectedReward = 2;  // 攻擊距離 +10
+			}
+
+			// 如果選擇了獎勵，套用並關閉 UI
+			if (selectedReward >= 0) {
+				switch (selectedReward) {
+					case 0:  // 增加血量上限
+						player.maxHp += 20;
+						if (player.currentHp > player.maxHp) {
+							player.currentHp = player.maxHp;
+						}
+						break;
+					case 1:  // 增加移動速度
+						playerSpeed += 1.0f;
+						break;
+					case 2:  // 增加攻擊距離
+						player.attackRange += 10.0f;
+						break;
+				}
+
+				// 標記寶箱已打開
+				dungeonMap.OpenChest(currentChestIndex);
+				showRewardUI = false;
+				currentChestIndex = -1;
+				selectedReward = -1;
+			}
+
+			// 如果超過 10 秒沒選擇，自動關閉
+			if (rewardUITimer > 10.0) {
+				showRewardUI = false;
+				currentChestIndex = -1;
+				selectedReward = -1;
+			}
+		}
+
 		// 同步位置給 Player，再處理攻擊輸入與更新（僅處理攻擊，不再次處理移動）
 		player.playerPos = playerPos;
 		player.currentWinPos = winPos;
@@ -404,6 +475,42 @@ int main() {
 			// 調試信息：顯示地圖大小和鑰匙數量
 			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth()/50, dungeonMap.GetTotalHeight()/50), 10, 100, 12, YELLOW);
 			DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
+
+			// 獎勵選擇 UI
+			if (showRewardUI && currentChestIndex >= 0) {
+				// 背景半透明黑色覆蓋
+				DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.5f));
+
+				// 獎勵選擇框
+				int uiWidth = 300;
+				int uiHeight = 200;
+				int uiX = (currentWidth - uiWidth) / 2;
+				int uiY = (currentHeight - uiHeight) / 2;
+
+				DrawRectangle(uiX, uiY, uiWidth, uiHeight, DARKGRAY);
+				DrawRectangleLines(uiX, uiY, uiWidth, uiHeight, WHITE);
+
+				// 標題
+				DrawText("Chest Reward - Choose One:", uiX + 20, uiY + 15, 16, WHITE);
+
+				// 三個獎勵選項
+				const char* rewardNames[] = { 
+					"[1] Max HP +20", 
+					"[2] Speed +1", 
+					"[3] Attack Range +10" 
+				};
+				Color rewardColors[] = { RED, BLUE, ORANGE };
+
+				for (int i = 0; i < 3; i++) {
+					int optionY = uiY + 50 + i * 40;
+					Color optColor = (selectedReward == i) ? YELLOW : rewardColors[i];
+					DrawRectangle(uiX + 20, optionY, uiWidth - 40, 35, Fade(BLACK, 0.3f));
+					DrawRectangleLines(uiX + 20, optionY, uiWidth - 40, 35, optColor);
+					DrawText(rewardNames[i], uiX + 35, optionY + 8, 14, optColor);
+				}
+
+				DrawText("Selecting in...", uiX + 20, uiY + 180, 10, GRAY);
+			}
 		}
 
 		EndDrawing();
