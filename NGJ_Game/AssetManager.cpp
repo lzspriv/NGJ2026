@@ -12,8 +12,8 @@ static Texture2D menuBackground;
 static Texture2D playerTexture;//check
 static Texture2D enemyTexture;
 static Texture2D bossTexture;
-static Texture2D itemKeyTexture;
-static Texture2D buffItemTexture;
+static Texture2D itemKeyTexture;//check
+static Texture2D buffItemTexture;//check
 
 static Music bgmMenu;//check
 static Music bgmGameplay;//check
@@ -72,8 +72,6 @@ void AssetManager::LoadAllAssets() {
 
     std::cout << "[AssetManager] Assets loaded successfully" << std::endl;
 }
-
-
 
 void AssetManager::UnloadAllAssets() {
     std::cout << "[AssetManager] Unloading assets..." << std::endl;
