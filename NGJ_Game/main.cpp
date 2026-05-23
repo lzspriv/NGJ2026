@@ -129,7 +129,7 @@ int main() {
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
 		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
 		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
-			if (IsKeyDown(KEY_RIGHT)) {
+			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
 
@@ -164,7 +164,7 @@ int main() {
 				}
 			}
 
-			if (IsKeyDown(KEY_LEFT)) {
+			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
 
@@ -198,7 +198,7 @@ int main() {
 				}
 			}
 
-			if (IsKeyDown(KEY_DOWN)) {
+			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
 
@@ -233,7 +233,7 @@ int main() {
 				}
 			}
 
-			if (IsKeyDown(KEY_UP)) {
+			if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
 
