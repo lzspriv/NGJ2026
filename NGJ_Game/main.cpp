@@ -9,7 +9,7 @@ int main() {
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - 4D Window Expand!");
 
-	//==============Important  Audio ==============
+	//==============Load & Audio prepare ==============
 	InitAudioDevice();
 
 	AssetManager::SetGameVolume(0.1f);
@@ -157,9 +157,13 @@ int main() {
 			// 主角在視窗內的相對座標下移 grow 像素
 			playerPos.y += (float)grow;
 		}
+
+
+		//============== add particle  ==============
 		AssetManager::EmitParticle(playerPos, SKYBLUE, 3.0f);
 		AssetManager::UpdateParticles();
 
+		//============== get font  ==============
 		Font customFont = AssetManager::GetGameFont();
 
 		// 繪製畫面
@@ -171,14 +175,17 @@ int main() {
 
 		// 畫出主角小藍方塊
 		AssetManager::DrawParticles();
+		//============== draw player  ==============
 		AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
+
+		//============== draw entity(key, boss)  ==============
 		AssetManager::DrawEntityAnimated(AssetManager::GetItemKeyTexture(),Vector2(50,50),7 ,1.0f,0.1f,WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetBossTexture(), Vector2(100, 100), 4, 3.0f, 0.1f, WHITE);
 		
 		EndDrawing();
 	}
-
+	//============== unload  ==============
 	AssetManager::UnloadAllAssets();
 	CloseWindow();
 	return 0;
