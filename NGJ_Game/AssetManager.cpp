@@ -23,6 +23,8 @@ static Sound soundShoot;
 static Sound soundSlash;
 static Sound soundExpand;
 static Sound soundHit;
+
+static Sound soundClick;
 static Sound soundPickup;
 
 static Font gameFont;
@@ -54,6 +56,7 @@ void AssetManager::LoadAllAssets() {
     soundShoot = LoadSound("assets/shoot.wav");
     soundSlash = LoadSound("assets/slash.wav");
     soundExpand = LoadSound("assets/expand.wav");
+    soundClick = LoadSound("assets/click.wav");
     soundHit = LoadSound("assets/hit.wav");
     soundPickup = LoadSound("assets/pickup.wav");
 
@@ -84,6 +87,8 @@ void AssetManager::UnloadAllAssets() {
     UnloadMusicStream(bgmBoss);
 
     UnloadSound(soundShoot);
+    UnloadSound(soundSlash);
+    UnloadSound(soundClick);
     UnloadSound(soundExpand);
     UnloadSound(soundHit);
     UnloadSound(soundPickup);
@@ -109,6 +114,7 @@ Music AssetManager::GetBgmBoss() { return bgmBoss; }
 
 Sound AssetManager::GetSoundShoot() { return soundShoot; }
 Sound AssetManager::GetSoundSlash() { return soundSlash; }
+Sound AssetManager::GetSoundClick() { return soundClick; }
 Sound AssetManager::GetSoundExpand() { return soundExpand; }
 Sound AssetManager::GetSoundHit() { return soundHit; }
 Sound AssetManager::GetSoundPickup() { return soundPickup; }

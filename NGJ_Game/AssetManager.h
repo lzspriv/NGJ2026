@@ -31,6 +31,8 @@ public:
 
     static Sound GetSoundShoot();
     static Sound GetSoundSlash();
+
+    static Sound GetSoundClick();
     static Sound GetSoundExpand();
     static Sound GetSoundHit();
     static Sound GetSoundPickup();
