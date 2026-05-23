@@ -2,33 +2,61 @@
 #include "PlatformUtils.h"
 #include "AssetManager.h"
 #include "Map.h"
+#include "Player.h"
+#include "Enemy.h"
+#include <vector>
+#include <ctime>
+#include <cstdlib>
 
 int main() {
+	// 使用 Player 的視窗初始值以保持先前行為
 	int currentWidth = 400;
 	int currentHeight = 400;
 
-	InitWindow(currentWidth, currentHeight, "NGJ2026 - 4D Window Expand Dungeon!");
+	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
+	InitWindow(currentWidth, currentHeight, "NGJ2026 - Integration: Map + Player");
 	AssetManager::LoadAllAssets();
 	SetWindowPosition(500, 300);
 	SetTargetFPS(60);
 
+	// 追蹤前一個所在的顯示器索引
 	int prevMonitor = GetCurrentMonitor();
 
-	// 初始化自動產圖地圖系統
+	// 初始化地圖系統
 	Map dungeonMap(currentWidth, currentHeight);
 	// 開啟地圖 debug overlay，顯示取樣顏色與提示數值
 	dungeonMap.SetDebugMode(true);
 
-	// 玩家在視窗內的相對位置
+	// 實例化玩家管理器（僅用於戰鬥/繪製相關）
+	PlayerManager player;
+	// 將 player 的視窗尺寸同步
+	player.currentWinWidth = currentWidth;
+	player.currentWinHeight = currentHeight;
+
+	// 本地玩家在視窗內的相對位置（以地圖邏輯為準）
 	Vector2 playerPos = { 200.0f, 200.0f };
 	float playerSpeed = 5.0f;
-	float playerRadius = 16.0f; // 用於地圖碰撞偵測
+	float playerRadius = 16.0f;
 
-	// 設定 2D 攝影機實現地圖與視窗桌面的完美映射
 	Camera2D camera = { 0 };
 	camera.zoom = 1.0f;
 
+	// 怪物管理（簡單示例）
+	std::vector<NGJ::Enemy> enemies;
+	// 若要更容易看見怪物，從地圖的玩家起始位置附近刷怪
+	// seed 隨機
+	std::srand((unsigned int)std::time(nullptr));
+	NGJ::Vec2 start = NGJ::Vec2(dungeonMap.GetPlayerStartPos().x, dungeonMap.GetPlayerStartPos().y);
+	auto spawnNear = [&](float dx, float dy) {
+		return NGJ::Vec2(start.x + dx, start.y + dy);
+	};
+	enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, spawnNear(0.0f, 0.0f));
+	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, spawnNear(120.0f, 0.0f));
+	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, spawnNear(-100.0f, 40.0f));
+	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, spawnNear(40.0f, -80.0f));
+
 	while (!WindowShouldClose()) {
+		float dt = GetFrameTime();
 		Vector2 winPos = GetWindowPosition();
 
 		int monitor = GetCurrentMonitor();
@@ -62,8 +90,7 @@ int main() {
 		if (gotWork) {
 			maxWidth = monW;
 			maxHeight = monH;
-		}
-		else {
+		} else {
 			monLeft = 0;
 			monTop = 0;
 		}
@@ -76,12 +103,12 @@ int main() {
 		if (relWinY > maxHeight) relWinY = maxHeight;
 
 		int rightAvailable = maxWidth - relWinX - currentWidth;
-		int downAvailable = maxHeight - relWinY - currentHeight;
-		int leftAvailable = relWinX;
-		int upAvailable = relWinY - 40;
+		int downAvailable  = maxHeight - relWinY - currentHeight;
+		int leftAvailable  = relWinX;
+		int upAvailable    = relWinY - 40;
 		if (upAvailable < 0) upAvailable = 0;
 
-		// 【關卡切換重置機制】當層級切換時，自動把視窗和玩家精準校位至新地圖的綠色出生點
+		// 關卡切換重置機制
 		static DungeonLayer lastLayer = (DungeonLayer)-1;
 		if (dungeonMap.GetCurrentLayer() != lastLayer) {
 			if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
@@ -101,10 +128,9 @@ int main() {
 		float centerY = currentHeight * 0.5f;
 		float margin = 5.0f;
 
-		// --- 融合原版視窗追隨邏輯與全新地圖牆壁碰撞偵測 ---
+		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
+		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
 		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
-
-			// 水平移動（右）
 			if (IsKeyDown(KEY_RIGHT)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -112,8 +138,7 @@ int main() {
 				if (playerPos.x < centerX) {
 					targetPlayerX += playerSpeed;
 					if (targetPlayerX > centerX) targetPlayerX = centerX;
-				}
-				else {
+				} else {
 					int winRightDesk = (int)winPos.x + currentWidth;
 					int screenRight = monLeft + monW;
 					int availableRight = screenRight - winRightDesk;
@@ -121,8 +146,7 @@ int main() {
 						int delta = (availableRight >= (int)playerSpeed) ? (int)playerSpeed : availableRight;
 						targetWinX += delta;
 						targetPlayerX = centerX;
-					}
-					else {
+					} else {
 						float maxPlayerX = (float)(currentWidth - 25);
 						targetPlayerX += playerSpeed;
 						if (targetPlayerX > maxPlayerX) targetPlayerX = maxPlayerX;
@@ -142,7 +166,6 @@ int main() {
 				}
 			}
 
-			// 水平移動（左）
 			if (IsKeyDown(KEY_LEFT)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -150,8 +173,7 @@ int main() {
 				if (playerPos.x > centerX) {
 					targetPlayerX -= playerSpeed;
 					if (targetPlayerX < centerX) targetPlayerX = centerX;
-				}
-				else {
+				} else {
 					int winLeftDesk = (int)winPos.x;
 					int screenLeft = monLeft;
 					int availableLeft = winLeftDesk - screenLeft;
@@ -159,8 +181,7 @@ int main() {
 						int delta = (availableLeft >= (int)playerSpeed) ? (int)playerSpeed : availableLeft;
 						targetWinX -= delta;
 						targetPlayerX = centerX;
-					}
-					else {
+					} else {
 						targetPlayerX -= playerSpeed;
 						if (targetPlayerX < margin) targetPlayerX = margin;
 					}
@@ -179,7 +200,6 @@ int main() {
 				}
 			}
 
-			// 垂直移動（下）
 			if (IsKeyDown(KEY_DOWN)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
@@ -187,8 +207,7 @@ int main() {
 				if (playerPos.y < centerY) {
 					targetPlayerY += playerSpeed;
 					if (targetPlayerY > centerY) targetPlayerY = centerY;
-				}
-				else {
+				} else {
 					int winBottomDesk = (int)winPos.y + currentHeight;
 					int screenBottom = monTop + monH;
 					int availableDown = screenBottom - winBottomDesk;
@@ -196,8 +215,7 @@ int main() {
 						int delta = (availableDown >= (int)playerSpeed) ? (int)playerSpeed : availableDown;
 						targetWinY += delta;
 						targetPlayerY = centerY;
-					}
-					else {
+					} else {
 						float maxPlayerY = (float)(currentHeight - 25);
 						targetPlayerY += playerSpeed;
 						if (targetPlayerY > maxPlayerY) targetPlayerY = maxPlayerY;
@@ -217,7 +235,6 @@ int main() {
 				}
 			}
 
-			// 垂直移動（上）
 			if (IsKeyDown(KEY_UP)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
@@ -225,8 +242,7 @@ int main() {
 				if (playerPos.y > centerY) {
 					targetPlayerY -= playerSpeed;
 					if (targetPlayerY < centerY) targetPlayerY = centerY;
-				}
-				else {
+				} else {
 					int winTopDesk = (int)winPos.y;
 					int screenTop = monTop;
 					int availableUp = winTopDesk - screenTop;
@@ -234,8 +250,7 @@ int main() {
 						int delta = (availableUp >= (int)playerSpeed) ? (int)playerSpeed : availableUp;
 						targetWinY -= delta;
 						targetPlayerY = centerY;
-					}
-					else {
+					} else {
 						targetPlayerY -= playerSpeed;
 						if (targetPlayerY < margin) targetPlayerY = margin;
 					}
@@ -255,35 +270,93 @@ int main() {
 			}
 		}
 
-		// 核心校準：計算玩家目前在桌面工作區（地圖世界）的絕對座標
 		Vector2 playerMapPos = { (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
-
-		// 更新地圖狀態（撿鑰匙、過關判斷）
 		dungeonMap.Update(playerMapPos);
 
-		// 設定 2D 攝影機：將玩家的網格世界座標映射到視窗畫面上
+		// 同步位置給 Player，再處理攻擊輸入與更新（僅處理攻擊，不再次處理移動）
+		player.playerPos = playerPos;
+		player.currentWinPos = winPos;
+		player.currentWinWidth = currentWidth;
+		player.currentWinHeight = currentHeight;
+		player.ProcessCombatInput();
+		player.UpdateCombat(dt);
+
+		// 更新敵人狀態（使用世界座標的 player 位置）
+		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
+		for (auto &e : enemies) {
+			e.Update(dt, playerWorldPos);
+			// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
+			// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+		}
+
 		camera.target = playerMapPos;
 		camera.offset = playerPos;
 
-		// 繪製畫面
 		BeginDrawing();
 		ClearBackground(BLACK);
 
 		if (dungeonMap.GetCurrentLayer() == DungeonLayer::VICTORY) {
 			DrawText("VICTORY!", currentWidth / 2 - 60, currentHeight / 2 - 10, 24, GOLD);
 			DrawText("Dungeon Defeated!", currentWidth / 2 - 80, currentHeight / 2 + 20, 16, WHITE);
-		}
-		else {
-			// 進入 2D 視界渲染地圖與物件
+		} else {
 			BeginMode2D(camera);
 			dungeonMap.DrawBaseMap();
 			dungeonMap.DrawObjects();
+			// 在 world-space 畫出子彈與近戰特效（將 window-local 轉為 world：world = winPos + local - monLeft/top）
+			for (const auto &b : player.bullets) {
+				if (b.active) {
+					Vector2 worldB = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+					DrawCircleV(worldB, 4.0f, YELLOW);
+				}
+			}
+			if (player.sword.active) {
+				Vector2 worldSwordCenter = { (winPos.x + player.sword.center.x) - monLeft, (winPos.y + player.sword.center.y) - monTop };
+				Rectangle swordRect = { worldSwordCenter.x, worldSwordCenter.y, 55.0f, 5.0f };
+				Vector2 origin = { 0.0f, 2.5f };
+				DrawRectanglePro(swordRect, origin, player.sword.currentAngle, RAYWHITE);
+			}
+
+			// Draw enemies in world-space
+			for (const auto &e : enemies) {
+				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
+				Color col = GRAY;
+				switch (e.GetState()) {
+				case NGJ::EnemyState::Idle: col = LIGHTGRAY; break;
+				case NGJ::EnemyState::Patrol: col = GREEN; break;
+				case NGJ::EnemyState::Chase: col = ORANGE; break;
+				case NGJ::EnemyState::Attack: col = RED; break;
+				case NGJ::EnemyState::Dead: col = DARKGRAY; break;
+				}
+				DrawCircle((int)wp.x, (int)wp.y, 12, col);
+				int barW = 30; int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
+				DrawRectangle((int)wp.x - barW/2, (int)wp.y - 20, barW, 5, DARKGRAY);
+				DrawRectangle((int)wp.x - barW/2, (int)wp.y - 20, hpW, 5, RED);
+				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, BLACK);
+			}
+
 			EndMode2D();
 
-			// 畫出主角動畫（保持在相對視窗座標）
+			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
+			if (!enemies.empty()) {
+				const auto &e0 = enemies[0];
+				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
+				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
+				DrawCircleV(eScreen, 6.0f, RED);
+				DrawText(TextFormat("Enemies: %d", (int)enemies.size()), 10, 10, 14, WHITE);
+				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
+				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
+			}
+			// 顯示玩家的 world->screen
+			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
+			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
+			DrawCircleV(pScreen, 5.0f, BLUE);
+			DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
+			DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
+
+			// Draw player at window-local for UI
+			player.playerPos = playerPos;
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
-			// 左上角固定 UI 狀態面板
 			DrawRectangle(8, 8, 220, 50, Fade(BLACK, 0.7f));
 			const char* gNames[] = { "Layer 1 (Maze)", "Layer 2 (Spiral)", "Layer 3 (Rooms)", "FINAL BOSS" };
 			DrawText(gNames[(int)dungeonMap.GetCurrentLayer()], 14, 12, 14, ORANGE);
