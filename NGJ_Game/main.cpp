@@ -12,7 +12,10 @@ int main() {
 	//==============Important  Audio ==============
 	InitAudioDevice();
 	AssetManager::LoadAllAssets();
-	//PlayMusicStream(AssetManager::GetBgmGameplay());
+	Music music = AssetManager::GetBgmGameplay();
+	PlayMusicStream(music);
+	// 將音樂設為循環
+	music.looping = true;
 	//=============================================
 
 	SetWindowPosition(500, 300);
@@ -27,6 +30,8 @@ int main() {
 	while (!WindowShouldClose()) {
 		// 每一幀取得目前視窗在桌面座標上的絕對位置
 		Vector2 winPos = GetWindowPosition();
+
+		UpdateMusicStream(music);
 
 		// 取得目前 Raylib 所判定的顯示器索引與尺寸
 		int monitor = GetCurrentMonitor();
@@ -160,7 +165,7 @@ int main() {
 		ClearBackground(BLACK);
 		
 		DrawText("4-Directional Expansion!", 20, 50, 18, GREEN);
-		DrawTextEx(customFont, "WASD to move, space to *beep", (Vector2) (20.0f,50.0f), 32.0f, 2.0f, WHITE);
+		DrawTextEx(customFont, "arrow to move, space to *beep", (Vector2) (20.0f,50.0f), 32.0f, 2.0f, WHITE);
 
 		// 畫出主角小藍方塊
 		AssetManager::DrawParticles();
