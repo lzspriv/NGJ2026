@@ -91,54 +91,106 @@ int main() {
 		int upAvailable    = relWinY - 40; // 還能往上擴張的像素數，保留標題列高度緩衝
 		if (upAvailable < 0) upAvailable = 0;
 
-		// 基礎移動控制（限制在視窗內）
-		if (IsKeyDown(KEY_RIGHT) && playerPos.x <= currentWidth - 25) playerPos.x += playerSpeed;
-		if (IsKeyDown(KEY_LEFT)  && playerPos.x >= 5)  playerPos.x -= playerSpeed;
-		if (IsKeyDown(KEY_DOWN)  && playerPos.y <= currentHeight - 25)  playerPos.y += playerSpeed;
-		if (IsKeyDown(KEY_UP)    && playerPos.y >= 5)    playerPos.y -= playerSpeed;
+		// 新的視窗追隨邏輯：
+		// - 當按方向鍵時，角色會先在視窗內移動到視窗中心；
+		// - 若角色已在視窗中心，視窗開始沿著該方向在顯示器上移動（角色保持在視窗中心）；
+		// - 當視窗無法再移動（到達顯示器邊界）時，角色才在視窗內繼續移動直到撞到視窗邊界。
+		float centerX = currentWidth * 0.5f;
+		float centerY = currentHeight * 0.5f;
+		float margin = 5.0f; // 視窗內角色邊界緩衝
 
-		// 1. ➡️ 往右擴張（不超出當前顯示器）
-		if (playerPos.x >= currentWidth - 20 && rightAvailable > 0) {
-			int grow = (rightAvailable >= 10) ? 10 : rightAvailable;
-			currentWidth += grow;
-			SetWindowSize(currentWidth, currentHeight);
+		// 水平移動（右）
+		if (IsKeyDown(KEY_RIGHT)) {
+			if (playerPos.x < centerX) {
+				// 先把角色移到視窗中心
+				playerPos.x += playerSpeed;
+				if (playerPos.x > centerX) playerPos.x = centerX;
+			} else {
+				// 角色已在中心，嘗試移動視窗到右邊（以顯示器為界）
+				int winRightDesk = (int)winPos.x + currentWidth;
+				int screenRight = monLeft + monW;
+				int availableRight = screenRight - winRightDesk;
+				if (availableRight > 0) {
+					int delta = (availableRight >= (int)playerSpeed) ? (int)playerSpeed : availableRight;
+					SetWindowPosition((int)winPos.x + delta, (int)winPos.y);
+					// 角色保持在中心
+					playerPos.x = centerX;
+					winPos = GetWindowPosition();
+				} else {
+					// 視窗已到螢幕右邊，角色在視窗內繼續向右移動
+					float maxPlayerX = (float)(currentWidth - 25);
+					playerPos.x += playerSpeed;
+					if (playerPos.x > maxPlayerX) playerPos.x = maxPlayerX;
+				}
+			}
 		}
 
-		// 2. ⬇️ 往下擴張（不超出當前顯示器）
-		if (playerPos.y >= currentHeight - 20 && downAvailable > 0) {
-			int grow = (downAvailable >= 10) ? 10 : downAvailable;
-			currentHeight += grow;
-			SetWindowSize(currentWidth, currentHeight);
+		// 水平移動（左）
+		if (IsKeyDown(KEY_LEFT)) {
+			if (playerPos.x > centerX) {
+				// 先把角色回到視窗中心
+				playerPos.x -= playerSpeed;
+				if (playerPos.x < centerX) playerPos.x = centerX;
+			} else {
+				// 角色已在中心或左側，嘗試移動視窗到左邊
+				int winLeftDesk = (int)winPos.x;
+				int screenLeft = monLeft;
+				int availableLeft = winLeftDesk - screenLeft;
+				if (availableLeft > 0) {
+					int delta = (availableLeft >= (int)playerSpeed) ? (int)playerSpeed : availableLeft;
+					SetWindowPosition((int)winPos.x - delta, (int)winPos.y);
+					// 角色保持在中心
+					playerPos.x = centerX;
+					winPos = GetWindowPosition();
+				} else {
+					// 視窗已到螢幕左邊，角色在視窗內繼續向左移動
+					playerPos.x -= playerSpeed;
+					if (playerPos.x < margin) playerPos.x = margin;
+				}
+			}
 		}
 
-		// 3. ⬅️ 往左擴張（只在視窗左邊還有空間時）
-		if (playerPos.x <= 0 && leftAvailable > 0) {
-			int grow = (leftAvailable >= 10) ? 10 : leftAvailable;
-			// 計算相對於該顯示器的新位置（使用 relWinX 避免桌面座標混淆）
-			int newRelX = relWinX - grow;
-			if (newRelX < 0) newRelX = 0; // 不超出顯示器左邊
-			int newPosX = monLeft + newRelX;
-			// 先設定位置再設定大小，避免某些系統在改大小時重定位視窗到主螢幕
-			SetWindowPosition(newPosX, monTop + relWinY);
-			SetWindowSize(currentWidth + grow, currentHeight);
-			currentWidth += grow; // 更新內部尺寸
-			// 因為視窗往左長了 grow 像素，主角在視窗內的相對座標必須右移 grow 像素
-			playerPos.x += (float)grow;
-			// 立刻更新 winPos，避免下一次計算使用舊值
-			winPos = GetWindowPosition();
+		// 垂直移動（下）
+		if (IsKeyDown(KEY_DOWN)) {
+			if (playerPos.y < centerY) {
+				playerPos.y += playerSpeed;
+				if (playerPos.y > centerY) playerPos.y = centerY;
+			} else {
+				int winBottomDesk = (int)winPos.y + currentHeight;
+				int screenBottom = monTop + monH;
+				int availableDown = screenBottom - winBottomDesk;
+				if (availableDown > 0) {
+					int delta = (availableDown >= (int)playerSpeed) ? (int)playerSpeed : availableDown;
+					SetWindowPosition((int)winPos.x, (int)winPos.y + delta);
+					playerPos.y = centerY;
+					winPos = GetWindowPosition();
+				} else {
+					float maxPlayerY = (float)(currentHeight - 25);
+					playerPos.y += playerSpeed;
+					if (playerPos.y > maxPlayerY) playerPos.y = maxPlayerY;
+				}
+			}
 		}
 
-		// 4. ⬆️ 往上擴張（只在視窗上邊還有空間時）
-		if (playerPos.y <= 0 && upAvailable > 0) {
-			int grow = (upAvailable >= 10) ? 10 : upAvailable;
-			currentHeight += grow; // 視窗變高
-			// 把整個視窗往上移 grow 像素，但確保不會移到顯示器上方以外
-			int newPosY = (int)winPos.y - grow;
-			if (newPosY < 0) newPosY = 0;
-			SetWindowPosition((int)winPos.x, newPosY);
-			SetWindowSize(currentWidth, currentHeight);
-			// 主角在視窗內的相對座標下移 grow 像素
-			playerPos.y += (float)grow;
+		// 垂直移動（上）
+		if (IsKeyDown(KEY_UP)) {
+			if (playerPos.y > centerY) {
+				playerPos.y -= playerSpeed;
+				if (playerPos.y < centerY) playerPos.y = centerY;
+			} else {
+				int winTopDesk = (int)winPos.y;
+				int screenTop = monTop;
+				int availableUp = winTopDesk - screenTop;
+				if (availableUp > 0) {
+					int delta = (availableUp >= (int)playerSpeed) ? (int)playerSpeed : availableUp;
+					SetWindowPosition((int)winPos.x, (int)winPos.y - delta);
+					playerPos.y = centerY;
+					winPos = GetWindowPosition();
+				} else {
+					playerPos.y -= playerSpeed;
+					if (playerPos.y < margin) playerPos.y = margin;
+				}
+			}
 		}
 
 		// 繪製畫面
