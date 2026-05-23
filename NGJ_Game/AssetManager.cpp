@@ -1,5 +1,9 @@
 #include "AssetManager.h"
 #include <iostream>
+#include <vector>
+
+const int MAX_PARTICLES = 50; // 一次最多出現 50 個粒子
+static Particle particles[MAX_PARTICLES];
 
 // ============================================================================
 // 隱藏的實體變數區 (鎖定在 cpp 內部，防止跨檔案衝突)
@@ -16,6 +20,7 @@ static Music bgmGameplay;
 static Music bgmBoss;
 
 static Sound soundShoot;
+static Sound soundSlash;
 static Sound soundExpand;
 static Sound soundHit;
 static Sound soundPickup;
@@ -47,6 +52,7 @@ void AssetManager::LoadAllAssets() {
     bgmBoss = LoadMusicStream("assets/bgm_boss.mp3");
 
     soundShoot = LoadSound("assets/shoot.wav");
+    soundSlash = LoadSound("assets/slash.wav");
     soundExpand = LoadSound("assets/expand.wav");
     soundHit = LoadSound("assets/hit.wav");
     soundPickup = LoadSound("assets/pickup.wav");
@@ -54,8 +60,15 @@ void AssetManager::LoadAllAssets() {
     // 載入字體
     gameFont = LoadFont("assets/hacker_font.ttf");
 
+    //粒子效果
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        particles[i].active = false;
+    }
+
     std::cout << "[AssetManager] Assets loaded successfully" << std::endl;
 }
+
+
 
 void AssetManager::UnloadAllAssets() {
     std::cout << "[AssetManager] Unloading assets..." << std::endl;
@@ -95,6 +108,7 @@ Music AssetManager::GetBgmGameplay() { return bgmGameplay; }
 Music AssetManager::GetBgmBoss() { return bgmBoss; }
 
 Sound AssetManager::GetSoundShoot() { return soundShoot; }
+Sound AssetManager::GetSoundSlash() { return soundSlash; }
 Sound AssetManager::GetSoundExpand() { return soundExpand; }
 Sound AssetManager::GetSoundHit() { return soundHit; }
 Sound AssetManager::GetSoundPickup() { return soundPickup; }
@@ -141,4 +155,46 @@ void AssetManager::DrawEnemyAnimated(Vector2 position, float* animTimer, int* cu
     Vector2 origin = { (float)frameWidth / 2.0f, (float)enemyTexture.height / 2.0f };
 
     DrawTexturePro(enemyTexture, srcRec, destRec, origin, 0.0f, tint);
+}
+
+// 產生粒子 (只需給座標和顏色)
+void AssetManager::EmitParticle(Vector2 position, Color color, float size) {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (!particles[i].active) {
+            particles[i].active = true;
+            particles[i].position = position;
+            // 給一個隨機的散發方向
+            particles[i].velocity = { (float)GetRandomValue(-30, 30) / 40.0f, (float)GetRandomValue(-30, 30) / 40.0f };
+            particles[i].color = color;
+            particles[i].alpha = 0.3f;
+            particles[i].lifeTime = 1.0f; // 存活 1 秒
+            particles[i].size = size;
+            //TraceLog(LOG_INFO, "Particle emitted at: %f, %f", position.x, position.y); // 檢查有沒有噴出來
+            break;
+        }
+    }
+}
+
+// 更新邏輯
+void AssetManager::UpdateParticles() {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (particles[i].active) {
+            particles[i].position.x += particles[i].velocity.x;
+            particles[i].position.y += particles[i].velocity.y;
+            particles[i].lifeTime -= GetFrameTime();
+            particles[i].alpha = particles[i].lifeTime; // 漸漸透明
+
+            if (particles[i].lifeTime <= 0) particles[i].active = false;
+        }
+    }
+}
+
+// 繪製邏輯
+void AssetManager::DrawParticles() {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (particles[i].active) {
+            //TraceLog(LOG_DEBUG, "Drawing particle %d at: %f, %f", i, particles[i].position.x, particles[i].position.y);
+            DrawCircleV(particles[i].position, particles[i].size, Fade(particles[i].color, particles[i].alpha));
+        }
+    }
 }

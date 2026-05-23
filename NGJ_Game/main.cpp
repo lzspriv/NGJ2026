@@ -8,7 +8,13 @@ int main() {
 
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - 4D Window Expand!");
+
+	//==============Important  Audio ==============
+	InitAudioDevice();
 	AssetManager::LoadAllAssets();
+	//PlayMusicStream(AssetManager::GetBgmGameplay());
+	//=============================================
+
 	SetWindowPosition(500, 300);
 	SetTargetFPS(60);
 
@@ -97,6 +103,10 @@ int main() {
 		if (IsKeyDown(KEY_DOWN)  && playerPos.y <= currentHeight - 25)  playerPos.y += playerSpeed;
 		if (IsKeyDown(KEY_UP)    && playerPos.y >= 5)    playerPos.y -= playerSpeed;
 
+		// test audio
+		if (IsKeyPressed(KEY_SPACE)) PlaySound(AssetManager::GetSoundShoot());
+		
+
 		// 1. ➡️ 往右擴張（不超出當前顯示器）
 		if (playerPos.x >= currentWidth - 20 && rightAvailable > 0) {
 			int grow = (rightAvailable >= 10) ? 10 : rightAvailable;
@@ -140,6 +150,8 @@ int main() {
 			// 主角在視窗內的相對座標下移 grow 像素
 			playerPos.y += (float)grow;
 		}
+		AssetManager::EmitParticle(playerPos, SKYBLUE, 3.0f);
+		AssetManager::UpdateParticles();
 
 		// 繪製畫面
 		BeginDrawing();
@@ -148,8 +160,10 @@ int main() {
 		DrawText("4-Directional Expansion!", 20, 20, 18, GREEN);
 
 		// 畫出主角小藍方塊
+		AssetManager::DrawParticles();
 		AssetManager::DrawPlayerAnimated(playerPos, WHITE);
-
+		
+		
 		EndDrawing();
 	}
 
