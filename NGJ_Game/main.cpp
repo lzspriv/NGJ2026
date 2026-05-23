@@ -11,6 +11,8 @@ int main() {
 
 	//==============Important  Audio ==============
 	InitAudioDevice();
+
+	AssetManager::SetGameVolume(0.2f);
 	AssetManager::LoadAllAssets();
 	Music music = AssetManager::GetBgmGameplay();
 	PlayMusicStream(music);
@@ -170,6 +172,8 @@ int main() {
 		// 畫出主角小藍方塊
 		AssetManager::DrawParticles();
 		AssetManager::DrawPlayerAnimated(playerPos, WHITE);
+
+		AssetManager::DrawItemAnimated(AssetManager::GetItemKeyTexture(),Vector2(50,50),7,0.1f,WHITE);
 		
 		
 		EndDrawing();

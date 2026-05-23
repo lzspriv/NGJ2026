@@ -27,6 +27,8 @@ static Sound soundHit;//check
 static Sound soundClick;//check
 static Sound soundPickup;//check
 
+static float currentVolume = 0.2f;
+
 static Font gameFont;//check
 
 //anim
@@ -143,6 +145,22 @@ void AssetManager::DrawPlayerAnimated(Vector2 position, Color tint) {
     DrawTexturePro(playerTexture, srcRec, destRec, origin, 0.0f, tint);
 }
 
+void AssetManager::DrawItemAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float frameSpeed, Color tint) {
+    // 取得單格寬度
+    int frameWidth = itemTex.width / maxFrames;
+
+    // 用系統絕對時間除以速度，取餘數算出現在該播哪一格
+    // 這樣不用任何變數紀錄，全球的同類道具都會完美同步閃爍
+    int currentFrame = (int)(GetTime() / frameSpeed) % maxFrames;
+
+    // 裁切與繪製矩形
+    Rectangle srcRec = { (float)currentFrame * frameWidth, 0.0f, (float)frameWidth, (float)itemTex.height };
+    Rectangle destRec = { position.x, position.y, (float)frameWidth, (float)itemTex.height };
+    Vector2 origin = { (float)frameWidth / 2.0f, (float)itemTex.height / 2.0f };
+
+    DrawTexturePro(itemTex, srcRec, destRec, origin, 0.0f, tint);
+}
+
 // 2. 怪物動畫繪製：因為場上怪物很多，各自的計時器（指標）由怪物自己保管，你只負責算公式
 void AssetManager::DrawEnemyAnimated(Vector2 position, float* animTimer, int* currentFrame, Color tint) {
     int maxFrames = 4; // 假設怪物也是 4 格動畫
@@ -163,6 +181,19 @@ void AssetManager::DrawEnemyAnimated(Vector2 position, float* animTimer, int* cu
     DrawTexturePro(enemyTexture, srcRec, destRec, origin, 0.0f, tint);
 }
 
+void AssetManager::SetGameVolume(float volume) {
+    if (volume < 0.0f) volume = 0.0f;
+    if (volume > 1.0f) volume = 1.0f;
+
+    currentVolume = volume;
+
+    SetMasterVolume(currentVolume);
+}
+
+float AssetManager::GetGameVolume() {
+    return currentVolume;
+}
+
 // 產生粒子 (只需給座標和顏色)
 void AssetManager::EmitParticle(Vector2 position, Color color, float size) {
     for (int i = 0; i < MAX_PARTICLES; i++) {
@@ -180,6 +211,7 @@ void AssetManager::EmitParticle(Vector2 position, Color color, float size) {
         }
     }
 }
+
 
 // 更新邏輯
 void AssetManager::UpdateParticles() {

@@ -157,11 +157,22 @@
     <ClInclude Include="Player.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="assets\key.png" />
     <Image Include="assets\player.png" />
   </ItemGroup>
   <ItemGroup>
+    <Media Include="assets\bgm_boss.mp3" />
+    <Media Include="assets\bgm_gameplay.mp3" />
+    <Media Include="assets\bgm_menu.mp3" />
+    <Media Include="assets\click.wav" />
+    <Media Include="assets\expand.wav" />
+    <Media Include="assets\hurt.wav" />
+    <Media Include="assets\pickup.wav" />
     <Media Include="assets\shoot.wav" />
     <Media Include="assets\slash.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="assets\mainfont.otf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

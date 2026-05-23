@@ -44,7 +44,11 @@ public:
     static void UpdateParticles();                           // 更新所有粒子位置
     static void DrawParticles();                             // 繪製所有粒子
 
+    static void SetGameVolume(float volume); // 設定音量 (0.0f 靜音 ~ 1.0f 最大聲)
+    static float GetGameVolume();
+
     static void DrawPlayerAnimated(Vector2 position, Color tint);
+    static void DrawItemAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float frameSpeed, Color tint);
 
     static void DrawEnemyAnimated(Vector2 position, float* animTimer, int* currentFrame, Color tint);
 };
