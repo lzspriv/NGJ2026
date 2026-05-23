@@ -18,6 +18,12 @@
     <ClCompile Include="main.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="AssetManager.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -38,5 +44,10 @@
     <ClInclude Include="AssetManager.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\player.png">
+      <Filter>資源檔</Filter>
+    </Image>
   </ItemGroup>
 </Project>
