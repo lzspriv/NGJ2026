@@ -16,6 +16,8 @@ int main() {
 
 	// 初始化自動產圖地圖系統
 	Map dungeonMap(currentWidth, currentHeight);
+	// 開啟地圖 debug overlay，顯示取樣顏色與提示數值
+	dungeonMap.SetDebugMode(true);
 
 	// 玩家在視窗內的相對位置
 	Vector2 playerPos = { 200.0f, 200.0f };
