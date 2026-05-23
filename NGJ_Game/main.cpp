@@ -24,8 +24,6 @@ int main() {
 
 	// 初始化地圖系統
 	Map dungeonMap(currentWidth, currentHeight);
-	// 開啟地圖 debug overlay，顯示取樣顏色與提示數值
-	dungeonMap.SetDebugMode(true);
 
 	// 實例化玩家管理器（僅用於戰鬥/繪製相關）
 	PlayerManager player;
