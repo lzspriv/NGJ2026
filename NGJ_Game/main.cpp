@@ -67,6 +67,10 @@ int main() {
 	// 初始化關卡層級追蹤，避免第一幀時觸發關卡重置
 	DungeonLayer lastLayer = dungeonMap.GetCurrentLayer();
 
+	// 用於檢測視窗拖曳作弊的變數
+	Vector2 lastWinPos = GetWindowPosition();
+	int lastMonitor = GetCurrentMonitor();
+
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
 		Vector2 winPos = GetWindowPosition();
@@ -89,6 +93,14 @@ int main() {
 			SetWindowPosition(newX, newY);
 			winPos = GetWindowPosition();
 			prevMonitor = monitor;
+			lastWinPos = winPos;
+			lastMonitor = monitor;
+		}
+		// 檢測同一螢幕內的視窗拖曳作弊
+		else if (monitor == lastMonitor && (winPos.x != lastWinPos.x || winPos.y != lastWinPos.y)) {
+			// 視窗在同一螢幕上被拖曳，恢復到原位置
+			SetWindowPosition((int)lastWinPos.x, (int)lastWinPos.y);
+			winPos = lastWinPos;
 		}
 
 		int monLeft = 0;
@@ -123,12 +135,15 @@ int main() {
 		// 關卡切換重置機制
 		if (dungeonMap.GetCurrentLayer() != lastLayer) {
 			if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
-				Vector2 startMapPos = dungeonMap.GetPlayerStartPos();
+				// 每一關都從視窗正中間開始
 				float cX = currentWidth * 0.5f;
 				float cY = currentHeight * 0.5f;
-				int targetWinX = (int)(monLeft + startMapPos.x - cX);
-				int targetWinY = (int)(monTop + startMapPos.y - cY);
-				SetWindowPosition(targetWinX, targetWinY);
+
+				// 將視窗置中到顯示器
+				int newX = monLeft + (maxWidth - currentWidth) / 2;
+				int newY = monTop + (maxHeight - currentHeight) / 2;
+				SetWindowPosition(newX, newY);
+
 				playerPos = { cX, cY };
 				winPos = GetWindowPosition();
 			}
@@ -280,6 +295,9 @@ int main() {
 				}
 			}
 		}
+
+		// 更新 lastWinPos，以便下一幀進行拖曳檢測
+		lastWinPos = winPos;
 
 		Vector2 playerMapPos = { (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
 		dungeonMap.Update(playerMapPos);
