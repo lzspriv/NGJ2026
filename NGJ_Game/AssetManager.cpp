@@ -9,7 +9,7 @@ static Particle particles[MAX_PARTICLES];
 // 隱藏的實體變數區 (鎖定在 cpp 內部，防止跨檔案衝突)
 // ============================================================================
 static Texture2D menuBackground;
-static Texture2D playerTexture;
+static Texture2D playerTexture;//check
 static Texture2D enemyTexture;
 static Texture2D bossTexture;
 static Texture2D itemKeyTexture;
@@ -19,13 +19,13 @@ static Music bgmMenu;
 static Music bgmGameplay;
 static Music bgmBoss;
 
-static Sound soundShoot;
-static Sound soundSlash;
-static Sound soundExpand;
-static Sound soundHit;
+static Sound soundShoot;//check
+static Sound soundSlash;//check
+static Sound soundExpand;//check
+static Sound soundHit;//check
 
-static Sound soundClick;
-static Sound soundPickup;
+static Sound soundClick;//check
+static Sound soundPickup;//check
 
 static Font gameFont;
 
