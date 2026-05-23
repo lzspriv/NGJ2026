@@ -12,7 +12,7 @@ int main() {
 	//==============Important  Audio ==============
 	InitAudioDevice();
 
-	AssetManager::SetGameVolume(0.2f);
+	AssetManager::SetGameVolume(0.3f);
 	AssetManager::LoadAllAssets();
 	Music music = AssetManager::GetBgmGameplay();
 	PlayMusicStream(music);
@@ -173,8 +173,7 @@ int main() {
 		AssetManager::DrawParticles();
 		AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
-		AssetManager::DrawItemAnimated(AssetManager::GetItemKeyTexture(),Vector2(50,50),7,0.1f,WHITE);
-		
+		AssetManager::DrawEntityAnimated(AssetManager::GetItemKeyTexture(),Vector2(50,50),7 ,1.0f,0.1f,WHITE);
 		
 		EndDrawing();
 	}

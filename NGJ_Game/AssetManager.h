@@ -21,6 +21,11 @@ public:
     static Texture2D GetMenuBackground();
     static Texture2D GetPlayerTexture();
     static Texture2D GetBossTexture();
+
+    static Texture2D GetEnemy1Texture();
+    static Texture2D GetEnemy2Texture();
+    static Texture2D GetEnemy3Texture();
+
     static Texture2D GetItemKeyTexture();
     static Texture2D GetBuffItemTexture();
 
@@ -48,6 +53,5 @@ public:
     static float GetGameVolume();
 
     static void DrawPlayerAnimated(Vector2 position, Color tint);
-    static void DrawItemAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float frameSpeed, Color tint);
-    static void DrawEntityAnimated(Texture2D texture, Vector2 position, float* animTimer, int* currentFrame, int maxFrames, float frameSpeed, float scale, Color tint);
+    static void DrawEntityAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float scale, float frameSpeed, Color tint);
 };

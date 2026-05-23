@@ -10,7 +10,11 @@ static Particle particles[MAX_PARTICLES];
 // ============================================================================
 static Texture2D menuBackground;
 static Texture2D playerTexture;//check
-static Texture2D enemyTexture;
+
+static Texture2D enemy1Texture;
+static Texture2D enemy2Texture;
+static Texture2D enemy3Texture;
+
 static Texture2D bossTexture;
 static Texture2D itemKeyTexture;//check
 static Texture2D buffItemTexture;//check
@@ -47,6 +51,11 @@ void AssetManager::LoadAllAssets() {
     menuBackground = LoadTexture("assets/bg_menu.png");
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
+
+    enemy1Texture = LoadTexture("assets/enemy1.png");
+    enemy2Texture = LoadTexture("assets/enemy2.png");
+    enemy3Texture = LoadTexture("assets/enemy3.png");
+
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
 
@@ -82,6 +91,10 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(itemKeyTexture);
     UnloadTexture(buffItemTexture);
 
+    UnloadTexture(enemy1Texture);
+    UnloadTexture(enemy2Texture);
+    UnloadTexture(enemy3Texture);
+
     UnloadMusicStream(bgmMenu);
     UnloadMusicStream(bgmGameplay);
     UnloadMusicStream(bgmBoss);
@@ -105,6 +118,11 @@ void AssetManager::UnloadAllAssets() {
 Texture2D AssetManager::GetMenuBackground() { return menuBackground; }
 Texture2D AssetManager::GetPlayerTexture() { return playerTexture; }
 Texture2D AssetManager::GetBossTexture() { return bossTexture; }
+
+Texture2D AssetManager::GetEnemy1Texture() { return enemy1Texture; }
+Texture2D AssetManager::GetEnemy2Texture() { return enemy2Texture; }
+Texture2D AssetManager::GetEnemy3Texture() { return enemy3Texture; }
+
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
 Texture2D AssetManager::GetBuffItemTexture() { return buffItemTexture; }
 
@@ -143,7 +161,7 @@ void AssetManager::DrawPlayerAnimated(Vector2 position, Color tint) {
     DrawTexturePro(playerTexture, srcRec, destRec, origin, 0.0f, tint);
 }
 
-void AssetManager::DrawItemAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float frameSpeed, Color tint) {
+void AssetManager::DrawEntityAnimated(Texture2D itemTex, Vector2 position, int maxFrames,  float scale, float frameSpeed, Color tint) {
     // 取得單格寬度
     int frameWidth = itemTex.width / maxFrames;
 
@@ -153,38 +171,12 @@ void AssetManager::DrawItemAnimated(Texture2D itemTex, Vector2 position, int max
 
     // 裁切與繪製矩形
     Rectangle srcRec = { (float)currentFrame * frameWidth, 0.0f, (float)frameWidth, (float)itemTex.height };
-    Rectangle destRec = { position.x, position.y, (float)frameWidth, (float)itemTex.height };
-    Vector2 origin = { (float)frameWidth / 2.0f, (float)itemTex.height / 2.0f };
-
-    DrawTexturePro(itemTex, srcRec, destRec, origin, 0.0f, tint);
-}
-
-// 2. 怪物動畫繪製：因為場上怪物很多，各自的計時器（指標）由怪物自己保管，你只負責算公式
-void AssetManager::DrawEntityAnimated(Texture2D texture, Vector2 position, float* animTimer, int* currentFrame, int maxFrames, float frameSpeed, float scale, Color tint) {
-    // 防呆：避免除以零
-    if (maxFrames <= 0) maxFrames = 1;
-
-    int frameWidth = texture.width / maxFrames;
-
-    // 1. 處理動畫計時器
-    *animTimer += GetFrameTime();
-    if (*animTimer >= frameSpeed) {
-        *animTimer = 0.0f;
-        *currentFrame = (*currentFrame + 1) % maxFrames;
-    }
-
-    // 2. 算出來源切圖範圍 (Sprite Sheet 上的位置)
-    Rectangle srcRec = { (float)(*currentFrame) * frameWidth, 0.0f, (float)frameWidth, (float)texture.height };
-
-    // 3. 算出目標繪製範圍 (乘上 scale 來決定大小)
     float scaledWidth = (float)frameWidth * scale;
-    float scaledHeight = (float)texture.height * scale;
-    Rectangle destRec = { position.x, position.y, scaledWidth, scaledHeight };
-
-    // 4. 設定中心錨點 (同樣要乘上 scale)
+    float scaledHeight = (float)itemTex.height * scale;
+    Rectangle destRec = { position.x, position.y,scaledWidth, scaledHeight };
     Vector2 origin = { scaledWidth / 2.0f, scaledHeight / 2.0f };
 
-    DrawTexturePro(texture, srcRec, destRec, origin, 0.0f, tint);
+    DrawTexturePro(itemTex, srcRec, destRec, origin, 0.0f, tint);
 }
 
 void AssetManager::SetGameVolume(float volume) {
