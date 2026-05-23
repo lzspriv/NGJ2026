@@ -23,13 +23,16 @@ private:
     int mapCols;
 
     Vector2 playerStartPos;
-    Vector2 keyPos;
+    std::vector<Vector2> keyPositions;      // 儲存3把鑰匙的位置
+    std::vector<bool> keyCollected;         // 追蹤3把鑰匙的收集狀態
+    int keysCollected;                      // 已收集的鑰匙總數
     Vector2 doorPos;
-    bool hasKey;
+    bool doorUnlocked;                      // 當所有3把鑰匙都收集時為true
 
     void GenerateDefaultMapFiles();
     void LoadMapFromImageFile(const char* fileName);
     void InitLayer(DungeonLayer layer);
+    bool IsMapConnected();                  // 驗證地圖連通性
 
 public:
     Map(int screenWidth, int screenHeight);
@@ -40,7 +43,9 @@ public:
     void DrawObjects();
 
     DungeonLayer GetCurrentLayer() const { return currentLayer; }
-    bool PlayerHasKey() const { return hasKey; }
+    int GetKeysCollected() const { return keysCollected; }
+    int GetTotalKeys() const { return 3; }
+    bool IsDoorUnlocked() const { return doorUnlocked; }
     Vector2 GetPlayerStartPos() const { return playerStartPos; }
     bool IsWall(float worldX, float worldY) const;
     int GetTotalWidth() const { return mapCols * tileWidth; }
