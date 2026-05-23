@@ -1,44 +1,94 @@
 #pragma once
-#include "raylib.h"
-#include <vector>
+#include <string>
 
-// 怪物結構體
-struct Enemy {
-    Vector2 pos;
-    float speed;
-    int hp;
-    int type;       // 1: 直線追蹤玩家, 2: 吃豆人式包抄AI, 3: 遠程子彈怪
-    bool active;
+namespace NGJ {
+
+// 簡單 2D 向量實作（獨立於任何引擎）
+struct Vec2 {
+    float x;
+    float y;
+    Vec2() : x(0.0f), y(0.0f) {}
+    Vec2(float _x, float _y) : x(_x), y(_y) {}
+
+    static float Distance(const Vec2& a, const Vec2& b);
+    Vec2 Normalized() const;
+
+    // 明確的運算函式：避免與其他庫型別造成運算子衝突
+    Vec2 Add(const Vec2& rhs) const { return Vec2(x + rhs.x, y + rhs.y); }
+    Vec2 Sub(const Vec2& rhs) const { return Vec2(x - rhs.x, y - rhs.y); }
+    Vec2 Mul(float scalar) const { return Vec2(x * scalar, y * scalar); }
 };
 
-// Boss 戰核心節點結構體
-struct BossCore {
-    Vector2 pos;
-    int hp;
-    bool active;    // 玩家必須尋找並擊破這些散落的核心，才能對 Boss 造成傷害
+// 敵人狀態列舉
+enum class EnemyState {
+    Idle,
+    Patrol,
+    Chase,
+    Attack,
+    Dead
 };
 
-class EnemyManager {
+// 可擴充的 Enemy 類別宣告
+// 可擴充的 Enemy 類別宣告
+class Enemy {
 public:
-    std::vector<Enemy> activeEnemies;
-    std::vector<BossCore> bossCores;
+    Enemy(const std::string& name_,
+          int maxHP_ = 10,
+          int attackPower_ = 2,
+          int defense_ = 0,
+          float moveSpeed_ = 60.0f,
+          float detectionRange_ = 150.0f,
+          float attackRange_ = 24.0f,
+          float attackCooldown_ = 1.0f,
+          const Vec2& startPos = Vec2(0.0f, 0.0f));
 
-    // Boss 屬性
-    Vector2 bossPos;
-    float bossSpeed;
-    int bossHp;
-    int bossMaxHp;
-    bool isBossSpawned;
+    virtual ~Enemy();
 
-    EnemyManager();
-    ~EnemyManager();
+    // 每幀呼叫以更新狀態與行為
+    void Update(float deltaTime, const Vec2& playerPosition);
 
-    // 根據目前關卡時間或波次，在視窗邊界外生成小怪
-    void SpawnEnemy(int level, Vector2 playerPos);
+    // 受傷、攻擊、死亡等介面
+    virtual void TakeDamage(int damage);
+    virtual int Attack();
+    virtual void Die();
 
-    // 更新怪物的追蹤 AI 邏輯、敵方彈幕、以及 Boss 戰時「視窗每秒縮小」的邏輯
-    void UpdateEnemiesAndBoss(Vector2 playerPos, int& winWidth, int& winHeight, float dt);
+    bool CanAttack() const;
+    bool GetIsDead() const;
+    EnemyState GetState() const;
 
-    // 繪製所有小怪、Boss、敵方彈幕、雷射預警線以及 Boss 的保護核心
-    void DrawEnemies();
+    Vec2 GetPosition() const;
+    void SetPosition(const Vec2& newPosition);
+
+    int GetCurrentHP() const;
+    int GetMaxHP() const;
+
+    // 可供外部調整的屬性（繼承或管理器可直接存取）
+    std::string name;
+    int maxHP;
+    int currentHP;
+    int attackPower;
+    int defense;
+    float moveSpeed;
+    float detectionRange;
+    float attackRange;
+    float attackCooldown;
+    bool isDead;
+    Vec2 position;
+    Vec2 patrolTarget;
+
+protected:
+    void UpdateState(const Vec2& playerPosition);
+    void UpdateIdle(float deltaTime);
+    void UpdatePatrol(float deltaTime);
+    void UpdateChase(float deltaTime, const Vec2& playerPosition);
+    void UpdateAttack(float deltaTime, const Vec2& playerPosition);
+
+    void MoveTowards(const Vec2& target, float deltaTime);
+    virtual void ChooseNewPatrolTarget();
+
+    EnemyState state;
+    float attackTimer;
+    float patrolRadius;
 };
+
+} // namespace NGJ
