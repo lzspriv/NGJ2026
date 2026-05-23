@@ -11,11 +11,11 @@ static Particle particles[MAX_PARTICLES];
 static Texture2D menuBackground;
 static Texture2D playerTexture;//check
 
-static Texture2D enemy1Texture;
-static Texture2D enemy2Texture;
-static Texture2D enemy3Texture;
+static Texture2D enemy1Texture;//check
+static Texture2D enemy2Texture;//check
+static Texture2D enemy3Texture;//check
 
-static Texture2D bossTexture;
+static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
 static Texture2D buffItemTexture;//check
 
