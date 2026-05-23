@@ -56,19 +56,21 @@ int main() {
 	bool showRewardUI = false;    // 是否顯示獎勵選擇 UI
 	double rewardUITimer = 0.0;   // 獎勵 UI 顯示計時器
 
-	// 怪物管理（簡單示例）
+	// 怪物管理（全地圖隨機空地生成）
 	std::vector<NGJ::Enemy> enemies;
-	// 若要更容易看見怪物，從地圖的玩家起始位置附近刷怪
-	// seed 隨機
 	std::srand((unsigned int)std::time(nullptr));
-	NGJ::Vec2 start = NGJ::Vec2(dungeonMap.GetPlayerStartPos().x, dungeonMap.GetPlayerStartPos().y);
-	auto spawnNear = [&](float dx, float dy) {
-		return NGJ::Vec2(start.x + dx, start.y + dy);
+
+	// 建立一個新的 Lambda 函式，向地圖請求隨機空地，並轉型為 Enemy 所需的 NGJ::Vec2
+	auto spawnRandom = [&]() {
+		Vector2 pos = dungeonMap.GetRandomFreePosition();
+		return NGJ::Vec2(pos.x, pos.y);
 		};
-	enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, spawnNear(0.0f, 0.0f));
-	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, spawnNear(120.0f, 0.0f));
-	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, spawnNear(-100.0f, 40.0f));
-	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, spawnNear(40.0f, -80.0f));
+
+	// 呼叫 spawnRandom() 讓怪物誕生在隨機角落
+	enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
 
 	// 初始化關卡層級追蹤，避免第一幀時觸發關卡重置
 	DungeonLayer lastLayer = dungeonMap.GetCurrentLayer();
@@ -393,7 +395,7 @@ int main() {
 		// 更新敵人狀態（使用世界座標的 player 位置）
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
 		for (auto& e : enemies) {
-			e.Update(dt, playerWorldPos);
+			e.Update(dt, playerWorldPos, &dungeonMap); // <--- 把地圖的記憶體位址傳進去
 			// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
 			// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
 		}

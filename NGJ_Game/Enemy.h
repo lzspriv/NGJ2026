@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Map.h"
 
 namespace NGJ {
 
@@ -45,7 +46,7 @@ public:
     virtual ~Enemy();
 
     // 每幀呼叫以更新狀態與行為
-    void Update(float deltaTime, const Vec2& playerPosition);
+    void Update(float deltaTime, const Vec2& playerPosition, Map* map);
 
     // 受傷、攻擊、死亡等介面
     virtual void TakeDamage(int damage);
@@ -77,14 +78,14 @@ public:
     Vec2 patrolTarget;
 
 protected:
-    void UpdateState(const Vec2& playerPosition);
-    void UpdateIdle(float deltaTime);
-    void UpdatePatrol(float deltaTime);
-    void UpdateChase(float deltaTime, const Vec2& playerPosition);
+    void UpdateState(const Vec2& playerPosition, Map* map);
+    void UpdateIdle(float deltaTime, Map* map);
+    void UpdatePatrol(float deltaTime, Map* map);
+    void UpdateChase(float deltaTime, const Vec2& playerPosition, Map* map);
     void UpdateAttack(float deltaTime, const Vec2& playerPosition);
 
-    void MoveTowards(const Vec2& target, float deltaTime);
-    virtual void ChooseNewPatrolTarget();
+    void MoveTowards(const Vec2& target, float deltaTime, Map* map);
+    virtual void ChooseNewPatrolTarget(Map* map);
 
     EnemyState state;
     float attackTimer;
