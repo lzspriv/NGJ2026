@@ -1,79 +1,84 @@
+// Raylib visual test harness: spawn window and enemies
 #include "raylib.h"
+#include "Enemy.h"
+#include <vector>
+#include <string>
 
 int main() {
-    int currentWidth = 400;
-    int currentHeight = 400;
-
-    // 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
-    InitWindow(currentWidth, currentHeight, "NGJ2026 - 4D Window Expand!");
-    SetWindowPosition(500, 300);
+    const int screenW = 800;
+    const int screenH = 600;
+    InitWindow(screenW, screenH, "NGJ Enemy Visual Test");
     SetTargetFPS(60);
 
-	// 獲取目前視窗所在的螢幕資訊，確保擴張不會超出螢幕邊界
-    int monitor = GetCurrentMonitor();
-    int maxWidth = GetMonitorWidth(monitor);  // 視窗最大寬度
-    int maxHeight = GetMonitorHeight(monitor);  // 視窗最大寬度
+    // Player
+    NGJ::Vec2 playerPos((float)screenW / 2.0f, (float)screenH / 2.0f);
+    float playerSpeed = 200.0f; // px/s
+    int playerHP = 30;
 
-    Vector2 playerPos = { 200.0f, 200.0f };
-    float playerSpeed = 5.0f;
+    // Spawn some enemies around the room
+    std::vector<NGJ::Enemy> enemies;
+    enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 180.0f, 24.0f, 1.0f, NGJ::Vec2(100.0f, 100.0f));
+    enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, NGJ::Vec2(700.0f, 120.0f));
+    enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, NGJ::Vec2(150.0f, 500.0f));
+    enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, NGJ::Vec2(650.0f, 420.0f));
+
+    // Set patrol targets for some
+    enemies[0].patrolTarget = NGJ::Vec2(200.0f, 120.0f);
+    enemies[2].patrolTarget = NGJ::Vec2(120.0f, 520.0f);
 
     while (!WindowShouldClose()) {
-        // 獲取目前視窗在螢幕上的絕對座標
-        Vector2 winPos = GetWindowPosition();
+        float dt = GetFrameTime();
 
+        // Player input
+        if (IsKeyDown(KEY_RIGHT)) playerPos.x += playerSpeed * dt;
+        if (IsKeyDown(KEY_LEFT)) playerPos.x -= playerSpeed * dt;
+        if (IsKeyDown(KEY_DOWN)) playerPos.y += playerSpeed * dt;
+        if (IsKeyDown(KEY_UP)) playerPos.y -= playerSpeed * dt;
 
-        // 基礎移動控制
-        if (IsKeyDown(KEY_RIGHT) && playerPos.x <= maxWidth - winPos.x - 25) playerPos.x += playerSpeed;
-        if (IsKeyDown(KEY_LEFT) && playerPos.x >= 5)  playerPos.x -= playerSpeed;
-        if (IsKeyDown(KEY_DOWN) && playerPos.y <= maxHeight - winPos.y - 25)  playerPos.y += playerSpeed;
-        if (IsKeyDown(KEY_UP) && playerPos.y >= 5)    playerPos.y -= playerSpeed;
+        // Keep player on screen
+        if (playerPos.x < 0) playerPos.x = 0;
+        if (playerPos.y < 0) playerPos.y = 0;
+        if (playerPos.x > screenW) playerPos.x = screenW;
+        if (playerPos.y > screenH) playerPos.y = screenH;
 
-
-        // 1. ➡️ 往右擴張 (維持原樣)
-        // 解決視窗超出螢幕問題
-        if (playerPos.x >= currentWidth - 20 && playerPos.x <= maxWidth - winPos.x - 20) {
-            currentWidth += 10;
-            SetWindowSize(currentWidth, currentHeight);
+        // Update enemies
+        for (auto &e : enemies) {
+            e.Update(dt, playerPos);
+            if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) {
+                int dmg = e.Attack();
+                playerHP -= dmg;
+            }
         }
 
-        // 2. ⬇️ 往下擴張 (維持原樣)
-        // 解決視窗超出螢幕問題
-        if (playerPos.y >= currentHeight - 20 && playerPos.y <= maxHeight - winPos.y - 20) {
-            currentHeight += 10;
-            SetWindowSize(currentWidth, currentHeight);
-        }
-
-        // 3. ⬅️ 往左擴張 (關鍵！)
-		// 解決視窗被拖著移動的問題：只有當視窗左邊界還有空間 (winPos.x > 0) 時，才允許往左擴張
-        if (playerPos.x <= 0 && winPos.x > 0) {
-            currentWidth += 10; // 1. 視窗變寬
-            // 2. 把整個視窗往左移 10 像素
-            SetWindowPosition(winPos.x - 10, winPos.y);
-            // 3. 強迫將視窗大小同步更新
-            SetWindowSize(currentWidth, currentHeight);
-            // 4. 因為視窗往左長了 10 像素，主角在視窗內的相對座標必須右移 10 像素，才不會卡在牆壁裡
-            playerPos.x += 10;
-        }
-
-        // 4. ⬆️ 往上擴張 (關鍵！)
-		// 解決視窗被拖著移動的問題：只有當視窗上邊界還有空間 (winPos.y > 0) 時，才允許往上擴張
-        if (playerPos.y <= 0 && winPos.y > 40) {
-            currentHeight += 10; // 1. 視窗變高
-            // 2. 把整個視窗往上移 10 像素
-            SetWindowPosition(winPos.x, winPos.y - 10);
-            SetWindowSize(currentWidth, currentHeight);
-            // 3. 主角在視窗內的相對座標下移 10 像素
-            playerPos.y += 10;
-        }
-
-        // 繪製畫面
+        // Draw
         BeginDrawing();
         ClearBackground(BLACK);
 
-        DrawText("4-Directional Expansion!", 20, 20, 18, GREEN);
+        // Draw player
+        DrawRectangle((int)playerPos.x - 10, (int)playerPos.y - 10, 20, 20, BLUE);
+        DrawText(TextFormat("Player HP: %d", playerHP), 10, 10, 20, WHITE);
 
-        // 畫出主角小藍方塊
-        DrawRectangleV(playerPos, { 20, 20 }, BLUE);
+        // Draw enemies
+        for (const auto &e : enemies) {
+            NGJ::Vec2 p = e.GetPosition();
+            Color col = GRAY;
+            switch (e.GetState()) {
+            case NGJ::EnemyState::Idle: col = LIGHTGRAY; break;
+            case NGJ::EnemyState::Patrol: col = GREEN; break;
+            case NGJ::EnemyState::Chase: col = ORANGE; break;
+            case NGJ::EnemyState::Attack: col = RED; break;
+            case NGJ::EnemyState::Dead: col = DARKGRAY; break;
+            }
+            // Draw body
+            DrawCircle((int)p.x, (int)p.y, 12, col);
+            // HP bar
+            int barW = 30;
+            int barH = 5;
+            int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
+            DrawRectangle((int)p.x - barW/2, (int)p.y - 20, barW, barH, DARKGRAY);
+            DrawRectangle((int)p.x - barW/2, (int)p.y - 20, hpW, barH, RED);
+            DrawText(e.name.c_str(), (int)p.x - 16, (int)p.y + 16, 10, BLACK);
+        }
 
         EndDrawing();
     }
