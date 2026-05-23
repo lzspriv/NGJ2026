@@ -53,55 +53,51 @@ void PlayerManager::HandleInput() {
         playerPos.y -= playerSpeed;
     }
 
-    // --- 攻擊模式切換 ---
-    if (IsKeyPressed(KEY_ONE)) {
-        currentMode = MODE_SHOOT;
-    }
-    if (IsKeyPressed(KEY_TWO)) {
-        currentMode = MODE_MELEE;
     }
 
-    // --- 滑鼠點擊攻擊 ---
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        Vector2 mousePos = GetMousePosition();
-        Vector2 playerCenter = { playerPos.x + 10.0f, playerPos.y + 10.0f };
-        Vector2 dir = { mousePos.x - playerCenter.x, mousePos.y - playerCenter.y };
-        float length = sqrtf(dir.x * dir.x + dir.y * dir.y);
+    void PlayerManager::ProcessCombatInput() {
+        // 攻擊模式切換
+        if (IsKeyPressed(KEY_ONE)) {
+            currentMode = MODE_SHOOT;
+        }
+        if (IsKeyPressed(KEY_TWO)) {
+            currentMode = MODE_MELEE;
+        }
 
-        if (length > 0.0f) {
-            dir.x /= length;
-            dir.y /= length;
+        // 滑鼠點擊攻擊
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Vector2 mousePos = GetMousePosition();
+            Vector2 playerCenter = { playerPos.x + 10.0f, playerPos.y + 10.0f };
+            Vector2 dir = { mousePos.x - playerCenter.x, mousePos.y - playerCenter.y };
+            float length = sqrtf(dir.x * dir.x + dir.y * dir.y);
 
-            if (currentMode == MODE_SHOOT) {
-                Bullet newBullet;
-                newBullet.pos = playerPos;
-                newBullet.speed = { dir.x * 8.0f, dir.y * 8.0f };
-                newBullet.active = true;
-                bullets.push_back(newBullet);
-            }
-            else if (currentMode == MODE_MELEE && sword.cooldownTimer <= 0.0f) {
-                sword.active = true;
-                sword.activeTimer = sword.duration;
-                sword.cooldownTimer = 0.4f;
+            if (length > 0.0f) {
+                dir.x /= length;
+                dir.y /= length;
 
-                // 計算滑鼠所在的基準角度
-                float targetAngleRad = atan2f(dir.y, dir.x);
-                float targetAngleDeg = targetAngleRad * (180.0f / PI);
+                if (currentMode == MODE_SHOOT) {
+                    Bullet newBullet;
+                    newBullet.pos = playerCenter; // spawn from player's center
+                    newBullet.speed = { dir.x * 8.0f, dir.y * 8.0f };
+                    newBullet.active = true;
+                    bullets.push_back(newBullet);
+                }
+                else if (currentMode == MODE_MELEE && sword.cooldownTimer <= 0.0f) {
+                    sword.active = true;
+                    sword.activeTimer = sword.duration;
+                    sword.cooldownTimer = 0.4f;
 
-                // 設定揮砍的扇形範圍幅度 (這裡設定總共揮砍 90 度，你可以調整這個數值)
-                float slashArc = 90.0f;
-
-                // 設定揮劍的起點與終點 (例如：滑鼠方向的左邊 45 度揮到右邊 45 度)
-                sword.startAngle = targetAngleDeg - (slashArc / 2.0f);
-                sword.endAngle = targetAngleDeg + (slashArc / 2.0f);
-
-                // 一開始的長方形劍身先停在起點
-                sword.currentAngle = sword.startAngle;
-                sword.center = playerCenter;
+                    float targetAngleRad = atan2f(dir.y, dir.x);
+                    float targetAngleDeg = targetAngleRad * (180.0f / PI);
+                    float slashArc = 90.0f;
+                    sword.startAngle = targetAngleDeg - (slashArc / 2.0f);
+                    sword.endAngle = targetAngleDeg + (slashArc / 2.0f);
+                    sword.currentAngle = sword.startAngle;
+                    sword.center = playerCenter;
+                }
             }
         }
     }
-}
 
 void PlayerManager::UpdatePlayerAndWindow(float dt) {
     currentWinPos = GetWindowPosition();
@@ -153,7 +149,49 @@ void PlayerManager::UpdatePlayerAndWindow(float dt) {
         sword.cooldownTimer -= dt;
     }
 
-    // --- 更新子彈位置與邊界回收 ---
+    // --- 更新子彈位置與邊界回收 (window-local) ---
+    for (size_t i = 0; i < bullets.size(); i++) {
+        if (bullets[i].active) {
+            bullets[i].pos.x += bullets[i].speed.x;
+            bullets[i].pos.y += bullets[i].speed.y;
+
+            if (bullets[i].pos.x < 0 || bullets[i].pos.x > currentWinWidth ||
+                bullets[i].pos.y < 0 || bullets[i].pos.y > currentWinHeight) {
+                bullets[i].active = false;
+            }
+        }
+    }
+
+    for (auto it = bullets.begin(); it != bullets.end();) {
+        if (!it->active) {
+            it = bullets.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+void PlayerManager::UpdateCombat(float dt) {
+    // 更新揮劍狀態
+    if (sword.active) {
+        sword.center = { playerPos.x + 10.0f, playerPos.y + 10.0f };
+        sword.activeTimer -= dt;
+
+        if (sword.activeTimer <= 0.0f) {
+            sword.active = false;
+        }
+        else {
+            float progress = (sword.duration - sword.activeTimer) / sword.duration;
+            sword.currentAngle = sword.startAngle + (sword.endAngle - sword.startAngle) * progress;
+        }
+    }
+
+    if (sword.cooldownTimer > 0.0f) {
+        sword.cooldownTimer -= dt;
+    }
+
+    // 子彈更新（已在 window-local 座標運算）
     for (size_t i = 0; i < bullets.size(); i++) {
         if (bullets[i].active) {
             bullets[i].pos.x += bullets[i].speed.x;

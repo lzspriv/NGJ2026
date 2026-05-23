@@ -36,6 +36,7 @@ int main() {
 	camera.zoom = 1.0f;
 
 	while (!WindowShouldClose()) {
+		float dt = GetFrameTime();
 		Vector2 winPos = GetWindowPosition();
 
 		int monitor = GetCurrentMonitor();
@@ -108,6 +109,7 @@ int main() {
 		float margin = 5.0f;
 
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
+		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
 		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
 			if (IsKeyDown(KEY_RIGHT)) {
 				float targetPlayerX = playerPos.x;
@@ -251,6 +253,14 @@ int main() {
 		Vector2 playerMapPos = { (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
 		dungeonMap.Update(playerMapPos);
 
+		// 同步位置給 Player，再處理攻擊輸入與更新（僅處理攻擊，不再次處理移動）
+		player.playerPos = playerPos;
+		player.currentWinPos = winPos;
+		player.currentWinWidth = currentWidth;
+		player.currentWinHeight = currentHeight;
+		player.ProcessCombatInput();
+		player.UpdateCombat(dt);
+
 		camera.target = playerMapPos;
 		camera.offset = playerPos;
 
@@ -264,11 +274,23 @@ int main() {
 			BeginMode2D(camera);
 			dungeonMap.DrawBaseMap();
 			dungeonMap.DrawObjects();
+			// 在 world-space 畫出子彈與近戰特效（將 window-local 轉為 world：world = winPos + local - monLeft/top）
+			for (const auto &b : player.bullets) {
+				if (b.active) {
+					Vector2 worldB = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+					DrawCircleV(worldB, 4.0f, YELLOW);
+				}
+			}
+			if (player.sword.active) {
+				Vector2 worldSwordCenter = { (winPos.x + player.sword.center.x) - monLeft, (winPos.y + player.sword.center.y) - monTop };
+				Rectangle swordRect = { worldSwordCenter.x, worldSwordCenter.y, 55.0f, 5.0f };
+				Vector2 origin = { 0.0f, 2.5f };
+				DrawRectanglePro(swordRect, origin, player.sword.currentAngle, RAYWHITE);
+			}
 			EndMode2D();
 
-			// 同步 player 內部狀態至 main 的 playerPos 以供繪製（player 仍管理攻擊/子彈資料）
+			// Draw player at window-local for UI
 			player.playerPos = playerPos;
-			// Draw player using AssetManager at window-local position
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
 			DrawRectangle(8, 8, 220, 50, Fade(BLACK, 0.7f));
