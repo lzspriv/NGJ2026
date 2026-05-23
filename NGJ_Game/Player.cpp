@@ -11,7 +11,7 @@ PlayerManager::~PlayerManager() {
 void PlayerManager::InitPlayer() {
     playerPos = { 200.0f, 200.0f };
     playerSpeed = 5.0f;
-    maxHp = 3;
+    maxHp = 10;
     currentHp = maxHp;
     score = 0;
     attackRange = 50.0f;   // 預設攻擊距離

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "Map.h"
 
 namespace NGJ {
@@ -27,6 +28,12 @@ enum class EnemyState {
     Chase,
     Attack,
     Dead
+};
+
+struct EnemyBullet {
+    Vec2 position;
+    Vec2 velocity;
+    bool active;
 };
 
 // 可擴充的 Enemy 類別宣告
@@ -63,6 +70,11 @@ public:
     int GetCurrentHP() const;
     int GetMaxHP() const;
 
+    void SetRangedAttack(bool enabled, float bulletSpeed = 220.0f, float bulletCooldown = 1.2f);
+    bool IsRangedAttackEnabled() const;
+    const std::vector<EnemyBullet>& GetBullets() const;
+    std::vector<EnemyBullet>& GetBulletsMutable();
+
     // 可供外部調整的屬性（繼承或管理器可直接存取）
     std::string name;
     int maxHP;
@@ -83,6 +95,7 @@ protected:
     void UpdatePatrol(float deltaTime, Map* map);
     void UpdateChase(float deltaTime, const Vec2& playerPosition, Map* map);
     void UpdateAttack(float deltaTime, const Vec2& playerPosition);
+    void UpdateBullets(float deltaTime, Map* map);
 
     void MoveTowards(const Vec2& target, float deltaTime, Map* map);
     virtual void ChooseNewPatrolTarget(Map* map);
@@ -90,6 +103,11 @@ protected:
     EnemyState state;
     float attackTimer;
     float patrolRadius;
+    bool canShoot;
+    float bulletSpeed;
+    float bulletCooldown;
+    float bulletTimer;
+    std::vector<EnemyBullet> bullets;
 };
 
 } // namespace NGJ

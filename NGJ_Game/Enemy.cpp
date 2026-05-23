@@ -57,7 +57,11 @@ NGJ::Enemy::Enemy(const std::string& name_,
 	patrolTarget(startPos),
 	state(NGJ::EnemyState::Idle),
 	attackTimer(0.0f),
-	patrolRadius(80.0f)
+	patrolRadius(80.0f),
+	canShoot(false),
+	bulletSpeed(220.0f),
+	bulletCooldown(1.2f),
+	bulletTimer(0.0f)
 {
 	SeedRandOnce();
 }
@@ -73,6 +77,10 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* m
 	if (attackTimer > 0.0f) {
 		attackTimer -= deltaTime;
 		if (attackTimer < 0.0f) attackTimer = 0.0f;
+	}
+	if (bulletTimer > 0.0f) {
+		bulletTimer -= deltaTime;
+		if (bulletTimer < 0.0f) bulletTimer = 0.0f;
 	}
 
 	UpdateState(playerPosition, map);
@@ -93,6 +101,8 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* m
 	case NGJ::EnemyState::Dead:
 		break;
 	}
+
+	UpdateBullets(deltaTime, map);
 }
 
 void NGJ::Enemy::TakeDamage(int damage) {
@@ -125,6 +135,16 @@ void NGJ::Enemy::SetPosition(const NGJ::Vec2& newPosition) { position = newPosit
 int NGJ::Enemy::GetCurrentHP() const { return currentHP; }
 int NGJ::Enemy::GetMaxHP() const { return maxHP; }
 
+void NGJ::Enemy::SetRangedAttack(bool enabled, float bulletSpeedValue, float bulletCooldownValue) {
+	canShoot = enabled;
+	if (bulletSpeedValue > 0.0f) bulletSpeed = bulletSpeedValue;
+	if (bulletCooldownValue > 0.05f) bulletCooldown = bulletCooldownValue;
+}
+
+bool NGJ::Enemy::IsRangedAttackEnabled() const { return canShoot; }
+const std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBullets() const { return bullets; }
+std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBulletsMutable() { return bullets; }
+
 void NGJ::Enemy::UpdateState(const NGJ::Vec2& playerPosition, Map* map) {
 	if (isDead) { state = NGJ::EnemyState::Dead; return; }
 	float distToPlayer = NGJ::Vec2::Distance(position, playerPosition);
@@ -156,7 +176,29 @@ void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, M
 	MoveTowards(playerPosition, deltaTime, map);
 }
 
-void NGJ::Enemy::UpdateAttack(float /*deltaTime*/, const NGJ::Vec2& /*playerPosition*/) {
+void NGJ::Enemy::UpdateAttack(float /*deltaTime*/, const NGJ::Vec2& playerPosition) {
+	if (!canShoot || bulletTimer > 0.0f) return;
+
+	NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+	if (std::abs(dir.x) <= 1e-6f && std::abs(dir.y) <= 1e-6f) return;
+
+	EnemyBullet b;
+	b.position = position;
+	b.velocity = dir.Mul(bulletSpeed);
+	b.active = true;
+	bullets.push_back(b);
+	bulletTimer = bulletCooldown;
+}
+
+void NGJ::Enemy::UpdateBullets(float deltaTime, Map* map) {
+	for (auto& b : bullets) {
+		if (!b.active) continue;
+		b.position = b.position.Add(b.velocity.Mul(deltaTime));
+
+		if (map && map->IsWall(b.position.x, b.position.y)) {
+			b.active = false;
+		}
+	}
 }
 
 void NGJ::Enemy::MoveTowards(const NGJ::Vec2& target, float deltaTime, Map* map) {

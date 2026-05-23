@@ -7,6 +7,7 @@
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
 
 int main() {
 	// 使用 Player 的視窗初始值以保持先前行為
@@ -56,6 +57,10 @@ int main() {
 	bool showRewardUI = false;    // 是否顯示獎勵選擇 UI
 	double rewardUITimer = 0.0;   // 獎勵 UI 顯示計時器
 
+	// 玩家受傷保護時間（避免每幀連續扣血）
+	float playerInvincibleTimer = 0.0f;
+	bool isGameOver = false;
+
 	// 怪物管理（全地圖隨機空地生成）
 	std::vector<NGJ::Enemy> enemies;
 	std::srand((unsigned int)std::time(nullptr));
@@ -67,13 +72,22 @@ int main() {
 		};
 
 	// 呼叫 spawnRandom() 讓怪物誕生在隨機角落
-	enemies.emplace_back("Goblin", 8, 2, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
-	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
-	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
-	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+	enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+	enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+	enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+	enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+
+	// 指定部分敵人為遠程攻擊型
+	if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f); // Wolf
+	if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f); // Bat
+
 
 	// 初始化關卡層級追蹤，避免第一幀時觸發關卡重置
 	DungeonLayer lastLayer = dungeonMap.GetCurrentLayer();
+
+	// 近戰命中追蹤：每次揮劍每個敵人只會吃到一次傷害
+	std::vector<bool> swordHitThisSwing(enemies.size(), false);
+	bool wasSwordActive = false;
 
 	// 用於檢測視窗拖曳作弊的變數
 	Vector2 lastWinPos = GetWindowPosition();
@@ -81,6 +95,21 @@ int main() {
 
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
+		if (!isGameOver && playerInvincibleTimer > 0.0f) {
+			playerInvincibleTimer -= dt;
+			if (playerInvincibleTimer < 0.0f) playerInvincibleTimer = 0.0f;
+		}
+		if (player.currentHp <= 0) {
+			isGameOver = true;
+		}
+		if (isGameOver) {
+			BeginDrawing();
+			ClearBackground(BLACK);
+			DrawText("GAME OVER", currentWidth / 2 - 90, currentHeight / 2 - 20, 36, RED);
+			DrawText("Press ESC to quit", currentWidth / 2 - 90, currentHeight / 2 + 20, 18, WHITE);
+			EndDrawing();
+			continue;
+		}
 		Vector2 winPos = GetWindowPosition();
 
 		int monitor = GetCurrentMonitor();
@@ -155,6 +184,19 @@ int main() {
 
 				playerPos = { cX, cY };
 				winPos = GetWindowPosition();
+
+				// 切換到新關卡時重生怪物
+				enemies.clear();
+				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+				enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+
+				if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f);
+				if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f);
+
+				swordHitThisSwing.assign(enemies.size(), false);
+				wasSwordActive = false;
 			}
 			lastLayer = dungeonMap.GetCurrentLayer();
 		}
@@ -165,7 +207,7 @@ int main() {
 
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
 		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
-		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
+		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY && !showRewardUI) {
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -354,12 +396,10 @@ int main() {
 
 			// 如果選擇了獎勵，套用並關閉 UI
 			if (selectedReward >= 0) {
-				switch (selectedReward) {
+					switch (selectedReward) {
 					case 0:  // 增加血量上限
 						player.maxHp += 20;
-						if (player.currentHp > player.maxHp) {
-							player.currentHp = player.maxHp;
-						}
+						player.currentHp = player.maxHp;
 						break;
 					case 1:  // 增加移動速度
 						playerSpeed += 1.0f;
@@ -389,15 +429,101 @@ int main() {
 		player.currentWinPos = winPos;
 		player.currentWinWidth = currentWidth;
 		player.currentWinHeight = currentHeight;
-		player.ProcessCombatInput();
-		player.UpdateCombat(dt);
+		if (!showRewardUI) {
+			player.ProcessCombatInput();
+			player.UpdateCombat(dt);
+		}
 
 		// 更新敵人狀態（使用世界座標的 player 位置）
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
-		for (auto& e : enemies) {
-			e.Update(dt, playerWorldPos, &dungeonMap); // <--- 把地圖的記憶體位址傳進去
-			// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
-			// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+		if (!showRewardUI) {
+			for (auto& e : enemies) {
+				e.Update(dt, playerWorldPos, &dungeonMap); // <--- 把地圖的記憶體位址傳進去
+				// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
+				// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+			}
+		}
+
+		// 玩家攻擊命中判定：子彈與近戰揮砍命中敵人時扣血
+		const int bulletDamage = 2;
+		const int swordDamage = 4;
+		const float enemyHitRadius = 12.0f;
+
+		if (!player.sword.active && wasSwordActive) {
+			std::fill(swordHitThisSwing.begin(), swordHitThisSwing.end(), false);
+		}
+		if (player.sword.active && !wasSwordActive) {
+			std::fill(swordHitThisSwing.begin(), swordHitThisSwing.end(), false);
+		}
+		wasSwordActive = player.sword.active;
+
+		for (size_t ei = 0; ei < enemies.size(); ++ei) {
+			auto& e = enemies[ei];
+			if (e.GetIsDead() || showRewardUI) continue;
+
+			Vector2 enemyPos = { e.GetPosition().x, e.GetPosition().y };
+
+			if (playerInvincibleTimer <= 0.0f) {
+				float pdx = playerMapPos.x - enemyPos.x;
+				float pdy = playerMapPos.y - enemyPos.y;
+				float playerEnemyDist = sqrtf(pdx * pdx + pdy * pdy);
+				if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() &&
+					playerEnemyDist <= playerRadius + enemyHitRadius + 4.0f) {
+					int dmg = e.Attack();
+					if (dmg > 0) {
+						player.currentHp -= dmg;
+						if (player.currentHp < 0) player.currentHp = 0;
+						playerInvincibleTimer = 0.5f;
+					}
+				}
+			}
+
+			// 子彈命中：命中後子彈失效並扣敵人血量
+			for (auto& b : player.bullets) {
+				if (!b.active) continue;
+				Vector2 bulletWorld = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+				float bdx = bulletWorld.x - enemyPos.x;
+				float bdy = bulletWorld.y - enemyPos.y;
+				float d = sqrtf(bdx * bdx + bdy * bdy);
+				if (d <= enemyHitRadius + 4.0f) {
+					e.TakeDamage(bulletDamage);
+					b.active = false;
+					break;
+				}
+			}
+
+			if (e.GetIsDead()) continue;
+
+			if (playerInvincibleTimer <= 0.0f) {
+				for (auto& eb : e.GetBulletsMutable()) {
+					if (!eb.active) continue;
+					float pdx = playerMapPos.x - eb.position.x;
+					float pdy = playerMapPos.y - eb.position.y;
+					float d = sqrtf(pdx * pdx + pdy * pdy);
+					if (d <= playerRadius + 4.0f) {
+						eb.active = false;
+						player.currentHp -= 3;
+						if (player.currentHp < 0) player.currentHp = 0;
+						playerInvincibleTimer = 0.5f;
+						break;
+					}
+				}
+			}
+
+			// 近戰命中：揮劍期間每個敵人只吃一次傷害
+			if (player.sword.active && !swordHitThisSwing[ei]) {
+				Vector2 swordCenterWorld = {
+					(winPos.x + player.sword.center.x) - monLeft,
+					(winPos.y + player.sword.center.y) - monTop
+				};
+				float sdx = swordCenterWorld.x - enemyPos.x;
+				float sdy = swordCenterWorld.y - enemyPos.y;
+				float d = sqrtf(sdx * sdx + sdy * sdy);
+				if (d <= player.attackRange + enemyHitRadius) {
+					e.TakeDamage(swordDamage);
+					swordHitThisSwing[ei] = true;
+				}
+			}
 		}
 
 		camera.target = playerMapPos;
@@ -428,8 +554,17 @@ int main() {
 				DrawRectanglePro(swordRect, origin, player.sword.currentAngle, RAYWHITE);
 			}
 
+			// Draw enemy bullets in world-space
+			for (const auto& e : enemies) {
+				for (const auto& b : e.GetBullets()) {
+					if (!b.active) continue;
+					DrawCircle((int)b.position.x, (int)b.position.y, 4, MAGENTA);
+				}
+			}
+
 			// Draw enemies in world-space
 			for (const auto& e : enemies) {
+				if (e.GetIsDead()) continue;
 				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
 				Color col = GRAY;
 				switch (e.GetState()) {
@@ -469,10 +604,11 @@ int main() {
 			player.playerPos = playerPos;
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 
-			DrawRectangle(8, 8, 220, 50, Fade(BLACK, 0.7f));
+			DrawRectangle(8, 8, 260, 68, Fade(BLACK, 0.7f));
 			const char* gNames[] = { "Layer 1 (Maze)", "Layer 2 (Spiral)", "Layer 3 (Rooms)", "FINAL BOSS" };
 			DrawText(gNames[(int)dungeonMap.GetCurrentLayer()], 14, 12, 14, ORANGE);
 			DrawText(TextFormat("Key Status: %d/%d", dungeonMap.GetKeysCollected(), dungeonMap.GetTotalKeys()), 14, 32, 14, dungeonMap.IsDoorUnlocked() ? GREEN : RED);
+			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
 
 			// 調試信息：顯示地圖大小和鑰匙數量
 			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth()/50, dungeonMap.GetTotalHeight()/50), 10, 100, 12, YELLOW);
