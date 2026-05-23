@@ -160,23 +160,31 @@ void AssetManager::DrawItemAnimated(Texture2D itemTex, Vector2 position, int max
 }
 
 // 2. 怪物動畫繪製：因為場上怪物很多，各自的計時器（指標）由怪物自己保管，你只負責算公式
-void AssetManager::DrawEnemyAnimated(Vector2 position, float* animTimer, int* currentFrame, Color tint) {
-    int maxFrames = 4; // 假設怪物也是 4 格動畫
-    int frameWidth = enemyTexture.width / maxFrames;
-    float frameSpeed = 0.15f; // 怪物動得稍微慢一點點
+void AssetManager::DrawEntityAnimated(Texture2D texture, Vector2 position, float* animTimer, int* currentFrame, int maxFrames, float frameSpeed, float scale, Color tint) {
+    // 防呆：避免除以零
+    if (maxFrames <= 0) maxFrames = 1;
 
-    // 透過指標更新該隻怪物自己的計時器
+    int frameWidth = texture.width / maxFrames;
+
+    // 1. 處理動畫計時器
     *animTimer += GetFrameTime();
     if (*animTimer >= frameSpeed) {
         *animTimer = 0.0f;
         *currentFrame = (*currentFrame + 1) % maxFrames;
     }
 
-    Rectangle srcRec = { (float)(*currentFrame) * frameWidth, 0.0f, (float)frameWidth, (float)enemyTexture.height };
-    Rectangle destRec = { position.x, position.y, (float)frameWidth, (float)enemyTexture.height };
-    Vector2 origin = { (float)frameWidth / 2.0f, (float)enemyTexture.height / 2.0f };
+    // 2. 算出來源切圖範圍 (Sprite Sheet 上的位置)
+    Rectangle srcRec = { (float)(*currentFrame) * frameWidth, 0.0f, (float)frameWidth, (float)texture.height };
 
-    DrawTexturePro(enemyTexture, srcRec, destRec, origin, 0.0f, tint);
+    // 3. 算出目標繪製範圍 (乘上 scale 來決定大小)
+    float scaledWidth = (float)frameWidth * scale;
+    float scaledHeight = (float)texture.height * scale;
+    Rectangle destRec = { position.x, position.y, scaledWidth, scaledHeight };
+
+    // 4. 設定中心錨點 (同樣要乘上 scale)
+    Vector2 origin = { scaledWidth / 2.0f, scaledHeight / 2.0f };
+
+    DrawTexturePro(texture, srcRec, destRec, origin, 0.0f, tint);
 }
 
 void AssetManager::SetGameVolume(float volume) {

@@ -49,6 +49,5 @@ public:
 
     static void DrawPlayerAnimated(Vector2 position, Color tint);
     static void DrawItemAnimated(Texture2D itemTex, Vector2 position, int maxFrames, float frameSpeed, Color tint);
-
-    static void DrawEnemyAnimated(Vector2 position, float* animTimer, int* currentFrame, Color tint);
+    static void DrawEntityAnimated(Texture2D texture, Vector2 position, float* animTimer, int* currentFrame, int maxFrames, float frameSpeed, float scale, Color tint);
 };
