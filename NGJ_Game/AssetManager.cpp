@@ -15,9 +15,9 @@ static Texture2D bossTexture;
 static Texture2D itemKeyTexture;
 static Texture2D buffItemTexture;
 
-static Music bgmMenu;
-static Music bgmGameplay;
-static Music bgmBoss;
+static Music bgmMenu;//check
+static Music bgmGameplay;//check
+static Music bgmBoss;//check
 
 static Sound soundShoot;//check
 static Sound soundSlash;//check
@@ -27,7 +27,7 @@ static Sound soundHit;//check
 static Sound soundClick;//check
 static Sound soundPickup;//check
 
-static Font gameFont;
+static Font gameFont;//check
 
 //anim
 static float playerTimer = 0.0f;
