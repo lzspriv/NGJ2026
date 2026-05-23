@@ -16,11 +16,22 @@ int main() {
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - Integration: Map + Player");
 	AssetManager::LoadAllAssets();
-	SetWindowPosition(500, 300);
 	SetTargetFPS(60);
 
 	// 追蹤前一個所在的顯示器索引
 	int prevMonitor = GetCurrentMonitor();
+
+	// 初始化時置中視窗到當前顯示器 - 使用與跨螢幕相同的邏輯
+	{
+		int monitor = GetCurrentMonitor();
+		int monLeft = 0, monTop = 0, monW = GetMonitorWidth(monitor), monH = GetMonitorHeight(monitor);
+		if (GetMonitorRectForWindow(GetWindowHandle(), monLeft, monTop, monW, monH)) {
+		}
+
+		int newX = monLeft + (monW - currentWidth) / 2;
+		int newY = monTop + (monH - currentHeight) / 2;
+		SetWindowPosition(newX, newY);
+	}
 
 	// 初始化地圖系統
 	Map dungeonMap(currentWidth, currentHeight);
@@ -52,6 +63,9 @@ int main() {
 	enemies.emplace_back("Wolf", 12, 3, 1, 80.0f, 220.0f, 20.0f, 1.2f, spawnNear(120.0f, 0.0f));
 	enemies.emplace_back("Slime", 6, 1, 0, 30.0f, 120.0f, 18.0f, 0.8f, spawnNear(-100.0f, 40.0f));
 	enemies.emplace_back("Bat", 5, 1, 0, 120.0f, 160.0f, 14.0f, 0.6f, spawnNear(40.0f, -80.0f));
+
+	// 初始化關卡層級追蹤，避免第一幀時觸發關卡重置
+	DungeonLayer lastLayer = dungeonMap.GetCurrentLayer();
 
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
@@ -107,7 +121,6 @@ int main() {
 		if (upAvailable < 0) upAvailable = 0;
 
 		// 關卡切換重置機制
-		static DungeonLayer lastLayer = (DungeonLayer)-1;
 		if (dungeonMap.GetCurrentLayer() != lastLayer) {
 			if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
 				Vector2 startMapPos = dungeonMap.GetPlayerStartPos();
