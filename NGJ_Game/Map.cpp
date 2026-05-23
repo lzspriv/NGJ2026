@@ -531,7 +531,9 @@ void Map::DrawObjects() {
 	// Draw chest
 	for (size_t i = 0; i < chestPositions.size(); i++) {
 		if (!chestOpened[i]) {
-			DrawCircleV(chestPositions[i], 14.0f, GOLD);
+			Rectangle chestRect = { chestPositions[i].x - 14.0f, chestPositions[i].y - 10.0f, 28.0f, 20.0f };
+			DrawRectangleRec(chestRect, GOLD);
+			DrawRectangleLines((int)chestRect.x, (int)chestRect.y, (int)chestRect.width, (int)chestRect.height, BROWN);
 		}
 	}
 

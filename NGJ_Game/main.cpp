@@ -56,6 +56,13 @@ int main() {
 	int selectedReward = -1;      // 已選擇的獎勵 (0=血量, 1=速度, 2=距離)
 	bool showRewardUI = false;    // 是否顯示獎勵選擇 UI
 	double rewardUITimer = 0.0;   // 獎勵 UI 顯示計時器
+	bool inChestRoom = false;     // 是否在寶箱戰鬥房間
+	Vector2 returnWinPos = { 0.0f, 0.0f };
+	Vector2 returnPlayerPos = { 0.0f, 0.0f };
+	std::vector<NGJ::Enemy> chestRoomEnemies;
+	bool showChestEntryPrompt = false;
+	int pendingChestIndex = -1;
+	int declinedChestIndex = -1;
 
 	// 玩家受傷保護時間（避免每幀連續扣血）
 	float playerInvincibleTimer = 0.0f;
@@ -75,11 +82,45 @@ int main() {
 		return NGJ::Vec2(pos.x, pos.y);
 		};
 
+	auto spawnChestRoomEnemies = [&]() {
+		chestRoomEnemies.clear();
+		for (int i = 0; i < 3; i++) {
+			int typeCount = ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) ? 5 : 4;
+			int t = std::rand() % typeCount;
+			float px = 80.0f + (float)(std::rand() % (currentWidth - 160));
+			int upperMinY = 60;
+			int upperMaxY = (currentHeight / 2) - 60;
+			if (upperMaxY < upperMinY) upperMaxY = upperMinY;
+			float py = (float)upperMinY + (float)(std::rand() % (upperMaxY - upperMinY + 1));
+			NGJ::Vec2 pos(px, py);
+
+			switch (t) {
+			case 0:
+				chestRoomEnemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, pos);
+				break;
+			case 1:
+				chestRoomEnemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, pos);
+				chestRoomEnemies.back().SetRangedAttack(true, 260.0f, 0.7f);
+				break;
+			case 2:
+				chestRoomEnemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, pos);
+				break;
+			case 3:
+				chestRoomEnemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, pos);
+				chestRoomEnemies.back().SetRangedAttack(true, 330.0f, 0.45f);
+				break;
+			default:
+				chestRoomEnemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, pos);
+				break;
+			}
+		}
+	};
+
 	// 呼叫 spawnRandom() 讓怪物誕生在隨機角落
 	enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 	enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 	enemies.emplace_back("Slime", 6, 3, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
-	enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+	enemies.emplace_back("Bat", 5, 3, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
 	if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
 		enemies.emplace_back("Assassin", 5, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 	}
@@ -102,7 +143,8 @@ int main() {
 
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
-		if (!isGameOver && playerInvincibleTimer > 0.0f) {
+		bool isUiPause = showRewardUI || showChestEntryPrompt;
+		if (!isGameOver && !isUiPause && playerInvincibleTimer > 0.0f) {
 			playerInvincibleTimer -= dt;
 			if (playerInvincibleTimer < 0.0f) playerInvincibleTimer = 0.0f;
 		}
@@ -195,7 +237,7 @@ int main() {
 				// 切換到新關卡時重生怪物
 				enemies.clear();
 				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
-				enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+				enemies.emplace_back("Wolf", 8, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
 				if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
@@ -216,9 +258,25 @@ int main() {
 		float centerY = currentHeight * 0.5f;
 		float margin = 5.0f;
 
+		if (inChestRoom && !isUiPause) {
+			float roomMinX = 20.0f;
+			float roomMinY = 20.0f;
+			float roomMaxX = (float)currentWidth - 20.0f;
+			float roomMaxY = (float)currentHeight - 20.0f;
+			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
+			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
+			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) playerPos.y += playerSpeed;
+			if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) playerPos.y -= playerSpeed;
+
+			if (playerPos.x < roomMinX) playerPos.x = roomMinX;
+			if (playerPos.y < roomMinY) playerPos.y = roomMinY;
+			if (playerPos.x > roomMaxX - 25) playerPos.x = roomMaxX - 25;
+			if (playerPos.y > roomMaxY - 25) playerPos.y = roomMaxY - 25;
+		}
+
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
 		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
-		if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY && !showRewardUI) {
+		if (!inChestRoom && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY && !isUiPause) {
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -369,26 +427,73 @@ int main() {
 		// 更新 lastWinPos，以便下一幀進行拖曳檢測
 		lastWinPos = winPos;
 
-		Vector2 playerMapPos = { (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
-		dungeonMap.Update(playerMapPos);
+		Vector2 playerMapPos = inChestRoom
+			? Vector2{ playerPos.x, playerPos.y }
+			: Vector2{ (winPos.x + playerPos.x) - monLeft, (winPos.y + playerPos.y) - monTop };
+		auto localToCombatWorld = [&](const Vector2& localPos) {
+			return inChestRoom
+				? Vector2{ localPos.x, localPos.y }
+				: Vector2{ (winPos.x + localPos.x) - monLeft, (winPos.y + localPos.y) - monTop };
+		};
+		if (!inChestRoom) {
+			dungeonMap.Update(playerMapPos);
+		}
 
 		// 寶箱碰撞檢測
 		const auto& chestPositions = dungeonMap.GetChestPositions();
 		const auto& chestOpened = dungeonMap.GetChestOpened();
 
-		for (int i = 0; i < (int)chestPositions.size(); i++) {
-			if (!chestOpened[i]) {
-				float distToChest = sqrtf(powf(playerMapPos.x - chestPositions[i].x, 2) + 
-											  powf(playerMapPos.y - chestPositions[i].y, 2));
-				if (distToChest < 30.0f) {
-					// 玩家碰到寶箱，打開它
-					if (currentChestIndex == -1) {
-						currentChestIndex = i;
-						showRewardUI = true;
-						rewardUITimer = 0.0;
-						selectedReward = -1;
+		if (!inChestRoom && !showChestEntryPrompt) {
+			for (int i = 0; i < (int)chestPositions.size(); i++) {
+				if (!chestOpened[i]) {
+					if (i == declinedChestIndex) continue;
+					float distToChest = sqrtf(powf(playerMapPos.x - chestPositions[i].x, 2) +
+						powf(playerMapPos.y - chestPositions[i].y, 2));
+					if (distToChest < 30.0f) {
+						pendingChestIndex = i;
+						showChestEntryPrompt = true;
+						break;
 					}
 				}
+			}
+		}
+
+		if (showChestEntryPrompt) {
+			if (IsKeyPressed(KEY_Y)) {
+				currentChestIndex = pendingChestIndex;
+				pendingChestIndex = -1;
+				showChestEntryPrompt = false;
+				declinedChestIndex = -1;
+				inChestRoom = true;
+				returnWinPos = winPos;
+				returnPlayerPos = playerPos;
+				playerPos = { currentWidth * 0.5f, currentHeight * 0.75f };
+				winPos = { (float)monLeft, (float)monTop };
+				SetWindowPosition(monLeft, monTop);
+				spawnChestRoomEnemies();
+				swordHitThisSwing.assign(chestRoomEnemies.size(), false);
+				wasSwordActive = false;
+			}
+			else if (IsKeyPressed(KEY_N)) {
+				declinedChestIndex = pendingChestIndex;
+				pendingChestIndex = -1;
+				showChestEntryPrompt = false;
+			}
+		}
+
+		// 寶箱房怪物全滅後才開啟獎勵 UI
+		if (inChestRoom && !showRewardUI && currentChestIndex >= 0) {
+			bool allDead = !chestRoomEnemies.empty();
+			for (const auto& ce : chestRoomEnemies) {
+				if (!ce.GetIsDead()) {
+					allDead = false;
+					break;
+				}
+			}
+			if (allDead) {
+				showRewardUI = true;
+				rewardUITimer = 0.0;
+				selectedReward = -1;
 			}
 		}
 
@@ -423,8 +528,15 @@ int main() {
 				// 標記寶箱已打開
 				dungeonMap.OpenChest(currentChestIndex);
 				showRewardUI = false;
+				inChestRoom = false;
 				currentChestIndex = -1;
 				selectedReward = -1;
+				chestRoomEnemies.clear();
+				SetWindowPosition((int)returnWinPos.x, (int)returnWinPos.y);
+				winPos = returnWinPos;
+				playerPos = returnPlayerPos;
+				swordHitThisSwing.assign(enemies.size(), false);
+				wasSwordActive = false;
 			}
 
 			// 如果超過 10 秒沒選擇，自動關閉
@@ -440,7 +552,7 @@ int main() {
 		player.currentWinPos = winPos;
 		player.currentWinWidth = currentWidth;
 		player.currentWinHeight = currentHeight;
-		if (!showRewardUI) {
+		if (!isUiPause) {
 			player.ProcessCombatInput();
 			player.UpdateCombat(dt);
 		}
@@ -449,16 +561,24 @@ int main() {
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
 		NGJ::Vec2 viewMin((float)(winPos.x - monLeft), (float)(winPos.y - monTop));
 		NGJ::Vec2 viewMax(viewMin.x + (float)currentWidth, viewMin.y + (float)currentHeight);
-		if (!showRewardUI) {
-			for (auto& e : enemies) {
-				e.Update(dt, playerWorldPos, &dungeonMap, &viewMin, &viewMax); // <--- 把地圖與可視範圍傳進去
-				// 若要讓敵人實際傷害玩家，可在此處處理 e.Attack() 的回傳值
-				// if (e.GetState() == NGJ::EnemyState::Attack && e.CanAttack() && !e.GetIsDead()) { playerHp -= e.Attack(); }
+		auto& activeEnemies = inChestRoom ? chestRoomEnemies : enemies;
+		if (!isUiPause) {
+			for (auto& e : activeEnemies) {
+				Map* combatMap = inChestRoom ? nullptr : &dungeonMap;
+				e.Update(dt, playerWorldPos, combatMap, &viewMin, &viewMax); // <--- 把地圖與可視範圍傳進去
+				if (inChestRoom) {
+					NGJ::Vec2 p = e.GetPosition();
+					if (p.x < 34.0f) p.x = 34.0f;
+					if (p.y < 34.0f) p.y = 34.0f;
+					if (p.x > (float)currentWidth - 34.0f) p.x = (float)currentWidth - 34.0f;
+					if (p.y > (float)currentHeight - 34.0f) p.y = (float)currentHeight - 34.0f;
+					e.SetPosition(p);
+				}
 			}
 		}
 
-		// 每 5 秒新增一隻隨機怪物（獎勵選單與勝利畫面期間暫停）
-		if (!showRewardUI && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
+		// 每 7 秒新增一隻隨機怪物（僅一般地圖）
+		if (!inChestRoom && !isUiPause && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
 			enemySpawnTimer += dt;
 			if (enemySpawnTimer >= enemySpawnInterval) {
 				enemySpawnTimer -= enemySpawnInterval;
@@ -500,9 +620,9 @@ int main() {
 		}
 		wasSwordActive = player.sword.active;
 
-		for (size_t ei = 0; ei < enemies.size(); ++ei) {
-			auto& e = enemies[ei];
-			if (e.GetIsDead() || showRewardUI) continue;
+		for (size_t ei = 0; ei < activeEnemies.size(); ++ei) {
+			auto& e = activeEnemies[ei];
+			if (e.GetIsDead() || isUiPause) continue;
 
 			Vector2 enemyPos = { e.GetPosition().x, e.GetPosition().y };
 
@@ -524,7 +644,7 @@ int main() {
 			// 子彈命中：命中後子彈失效並扣敵人血量（Goblin 盾牌可擋子彈）
 			for (auto& b : player.bullets) {
 				if (!b.active) continue;
-				Vector2 bulletWorld = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+				Vector2 bulletWorld = localToCombatWorld(b.pos);
 
 				// Goblin 盾牌：朝向玩家，僅擋子彈，不擋近戰
 				if (e.name == "Goblin") {
@@ -595,10 +715,7 @@ int main() {
 
 			// 近戰命中：揮劍期間每個敵人只吃一次傷害
 			if (player.sword.active && !swordHitThisSwing[ei]) {
-				Vector2 swordCenterWorld = {
-					(winPos.x + player.sword.center.x) - monLeft,
-					(winPos.y + player.sword.center.y) - monTop
-				};
+				Vector2 swordCenterWorld = localToCombatWorld(player.sword.center);
 				float sdx = swordCenterWorld.x - enemyPos.x;
 				float sdy = swordCenterWorld.y - enemyPos.y;
 				float d = sqrtf(sdx * sdx + sdy * sdy);
@@ -621,24 +738,31 @@ int main() {
 		}
 		else {
 			BeginMode2D(camera);
-			dungeonMap.DrawBaseMap();
-			dungeonMap.DrawObjects();
+			if (!inChestRoom) {
+				dungeonMap.DrawBaseMap();
+				dungeonMap.DrawObjects();
+			}
+			else {
+				DrawRectangle(20, 20, currentWidth - 40, currentHeight - 40, DARKGRAY);
+				DrawRectangleLines(20, 20, currentWidth - 40, currentHeight - 40, BLACK);
+			}
 			// 在 world-space 畫出子彈與近戰特效（將 window-local 轉為 world：world = winPos + local - monLeft/top）
 			for (const auto& b : player.bullets) {
 				if (b.active) {
-					Vector2 worldB = { (winPos.x + b.pos.x) - monLeft, (winPos.y + b.pos.y) - monTop };
+					Vector2 worldB = localToCombatWorld(b.pos);
 					DrawCircleV(worldB, 4.0f, YELLOW);
 				}
 			}
 			if (player.sword.active) {
-				Vector2 worldSwordCenter = { (winPos.x + player.sword.center.x) - monLeft, (winPos.y + player.sword.center.y) - monTop };
+				Vector2 worldSwordCenter = localToCombatWorld(player.sword.center);
 				Rectangle swordRect = { worldSwordCenter.x, worldSwordCenter.y, 55.0f, 5.0f };
 				Vector2 origin = { 0.0f, 2.5f };
 				DrawRectanglePro(swordRect, origin, player.sword.currentAngle, RAYWHITE);
 			}
 
 			// Draw enemy bullets in world-space
-			for (const auto& e : enemies) {
+			const auto& drawEnemies = inChestRoom ? chestRoomEnemies : enemies;
+			for (const auto& e : drawEnemies) {
 				for (const auto& b : e.GetBullets()) {
 					if (!b.active) continue;
 					DrawCircle((int)b.position.x, (int)b.position.y, 4, MAGENTA);
@@ -646,7 +770,7 @@ int main() {
 			}
 
 			// Draw enemies in world-space
-			for (const auto& e : enemies) {
+			for (const auto& e : drawEnemies) {
 				if (e.GetIsDead()) continue;
 				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
 				Color col = GRAY;
@@ -687,12 +811,12 @@ int main() {
 			EndMode2D();
 
 			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
-			if (!enemies.empty()) {
-				const auto& e0 = enemies[0];
+			if (!drawEnemies.empty()) {
+				const auto& e0 = drawEnemies[0];
 				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
 				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
 				DrawCircleV(eScreen, 6.0f, RED);
-				DrawText(TextFormat("Enemies: %d", (int)enemies.size()), 10, 10, 14, WHITE);
+				DrawText(TextFormat("Enemies: %d", (int)drawEnemies.size()), 10, 10, 14, WHITE);
 				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
 				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
 			}
@@ -706,6 +830,9 @@ int main() {
 			// Draw player at window-local for UI
 			player.playerPos = playerPos;
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
+			if (inChestRoom) {
+				DrawText("REWARD ROOM", 12, currentHeight - 22, 14, GOLD);
+			}
 
 			DrawRectangle(8, 8, 260, 68, Fade(BLACK, 0.7f));
 			const char* gNames[] = { "Layer 1 (Maze)", "Layer 2 (Spiral)", "Layer 3 (Rooms)", "FINAL BOSS" };
@@ -753,7 +880,37 @@ int main() {
 				DrawText("Selecting in...", uiX + 20, uiY + 180, 10, GRAY);
 			}
 		}
+		// ==========================================
+			// 寶箱進入確認彈出視窗 UI
+			// ==========================================
+		if (showChestEntryPrompt) {
+			// 1. 畫一層半透明的黑幕蓋住背景，讓注意力集中在視窗上
+			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.6f));
 
+			// 2. 計算對話框大小與置中位置
+			int promptWidth = 280;
+			int promptHeight = 120;
+			int promptX = (currentWidth - promptWidth) / 2;
+			int promptY = (currentHeight - promptHeight) / 2;
+
+			// 3. 畫出對話框底色與邊框 (科技感的深藍+亮藍邊)
+			DrawRectangle(promptX, promptY, promptWidth, promptHeight, DARKBLUE);
+			DrawRectangleLines(promptX, promptY, promptWidth, promptHeight, SKYBLUE);
+
+			// 4. 顯示提示文字
+			DrawText("MYSTERIOUS SIGNAL DETECTED", promptX + 15, promptY + 20, 16, GOLD);
+			DrawText("Enter Reward Room?", promptX + 60, promptY + 50, 16, WHITE);
+
+			// 5. 畫出 Yes / No 選項提示
+			DrawRectangle(promptX + 30, promptY + 80, 80, 25, Fade(GREEN, 0.3f));
+			DrawRectangleLines(promptX + 30, promptY + 80, 80, 25, GREEN);
+			DrawText("[Y] YES", promptX + 45, promptY + 85, 14, GREEN);
+
+			DrawRectangle(promptX + 170, promptY + 80, 80, 25, Fade(RED, 0.3f));
+			DrawRectangleLines(promptX + 170, promptY + 80, 80, 25, RED);
+			DrawText("[N] NO", promptX + 185, promptY + 85, 14, RED);
+		}
+		// ==========================================
 		EndDrawing();
 	}
 
