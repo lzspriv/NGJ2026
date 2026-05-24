@@ -2,431 +2,28 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <algorithm> // 給 std::min 使用
 
 Map::Map(int screenWidth, int screenHeight) {
 	tileWidth = 50;
 	tileHeight = 50;
-	GenerateDefaultMapFiles();
-	InitLayer(DungeonLayer::LAYER_1);
+	InitLevel(1); // 遊戲從第 1 關開始
 }
 
 Map::~Map() {}
 
-void Map::GenerateDefaultMapFiles() {
-	const int W = 38;
-	const int H = 22;
-
-	Color WHT = { 255, 255, 255, 255 };
-	Color BLK = { 0, 0, 0, 255 };
-	Color GRN = { 0, 255, 0, 255 };
-	Color BLU = { 0, 0, 255, 255 };
-	Color RED_ = { 255, 0, 0, 255 };
-	Color PRP = { 200, 0, 200, 255 };
-
-	if (FileExists("map1.png") && FileExists("map2.png") && FileExists("map3.png") && FileExists("boss.png")) {
-		return;
-	}
-
-	srand((unsigned)time(NULL));
-
-	// Map 1: Classic Maze
-	std::vector<Color> m1(W * H, BLK);
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			if (y > 0 && y < H - 1 && x > 0 && x < W - 1) m1[y * W + x] = WHT;
-			if (y == 7 && x > 5 && x < 33) m1[y * W + x] = BLK;
-			if (y == 15 && x > 3 && x < 30) m1[y * W + x] = BLK;
-			if (x == 12 && y > 3 && y < 13) m1[y * W + x] = BLK;
-			if (x == 25 && y > 8 && y < 18) m1[y * W + x] = BLK;
-		}
-	}
-	m1[2 * W + 2] = WHT;
-	m1[2 * W + 3] = WHT;
-	m1[3 * W + 2] = WHT;
-	m1[3 * W + 3] = WHT;
-	m1[2 * W + 2] = GRN;
-
-	// Add random keys to map1
-	for (int keyCount = 0; keyCount < 3; keyCount++) {
-		bool placed = false;
-		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
-			int randomX = 4 + (rand() % (W - 8));
-			int randomY = 4 + (rand() % (H - 8));
-			int idx = randomY * W + randomX;
-
-			if (m1[idx].r == 255 && m1[idx].g == 255 && m1[idx].b == 255) {
-				bool tooCloseToStart = false;
-				for (int sy = 1; sy < 5; sy++) {
-					for (int sx = 1; sx < 5; sx++) {
-						if (randomX == sx && randomY == sy) tooCloseToStart = true;
-					}
-				}
-
-				bool overlapped = false;
-				for (int y = 0; y < H && !overlapped; y++) {
-					for (int x = 0; x < W && !overlapped; x++) {
-						Color c = m1[y * W + x];
-						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-							(c.r > 150 && c.g < 50 && c.b > 150)) {
-							if (x == randomX && y == randomY) overlapped = true;
-						}
-					}
-				}
-
-				if (!tooCloseToStart && !overlapped) {
-					m1[idx] = BLU;
-					placed = true;
-				}
-			}
-		}
-	}
-
-	// Add random chest to map1
-	bool chestPlaced = false;
-	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
-		int randomX = 4 + (rand() % (W - 8));
-		int randomY = 4 + (rand() % (H - 8));
-		int idx = randomY * W + randomX;
-
-		if (m1[idx].r == 255 && m1[idx].g == 255 && m1[idx].b == 255) {
-			bool tooCloseToStart = false;
-			for (int sy = 1; sy < 5; sy++) {
-				for (int sx = 1; sx < 5; sx++) {
-					if (randomX == sx && randomY == sy) tooCloseToStart = true;
-				}
-			}
-
-			bool overlapped = false;
-			for (int y = 0; y < H && !overlapped; y++) {
-				for (int x = 0; x < W && !overlapped; x++) {
-					Color c = m1[y * W + x];
-					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-						(c.r > 150 && c.g < 50 && c.b > 150)) {
-						if (x == randomX && y == randomY) overlapped = true;
-					}
-				}
-			}
-
-			if (!tooCloseToStart && !overlapped) {
-				m1[idx] = PRP;
-				chestPlaced = true;
-			}
-		}
-	}
-
-	// Map 2: Spiral Maze
-	std::vector<Color> m2(W * H, BLK);
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m2[y * W + x] = WHT;
-			if (y == 3 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
-			if (x == W - 4 && y >= 3 && y <= H - 4) m2[y * W + x] = BLK;
-			if (y == H - 4 && x >= 3 && x <= W - 4) m2[y * W + x] = BLK;
-			if (x == 3 && y >= 6 && y <= H - 4) m2[y * W + x] = BLK;
-			if (y == 6 && x >= 3 && x <= W - 7) m2[y * W + x] = BLK;
-			if (x == W - 7 && y >= 6 && y <= H - 7) m2[y * W + x] = BLK;
-			if (y == H - 7 && x >= 6 && x <= W - 7) m2[y * W + x] = BLK;
-		}
-	}
-	m2[2 * W + 2] = WHT;
-	m2[2 * W + 3] = WHT;
-	m2[3 * W + 2] = WHT;
-	m2[3 * W + 3] = WHT;
-	m2[2 * W + 2] = GRN;
-
-	// Add random keys to map2
-	for (int keyCount = 0; keyCount < 3; keyCount++) {
-		bool placed = false;
-		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
-			int randomX = 4 + (rand() % (W - 8));
-			int randomY = 4 + (rand() % (H - 8));
-			int idx = randomY * W + randomX;
-
-			if (m2[idx].r == 255 && m2[idx].g == 255 && m2[idx].b == 255) {
-				bool tooCloseToStart = false;
-				for (int sy = 1; sy < 5; sy++) {
-					for (int sx = 1; sx < 5; sx++) {
-						if (randomX == sx && randomY == sy) tooCloseToStart = true;
-					}
-				}
-
-				bool overlapped = false;
-				for (int y = 0; y < H && !overlapped; y++) {
-					for (int x = 0; x < W && !overlapped; x++) {
-						Color c = m2[y * W + x];
-						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-							(c.r > 150 && c.g < 50 && c.b > 150)) {
-							if (x == randomX && y == randomY) overlapped = true;
-						}
-					}
-				}
-
-				if (!tooCloseToStart && !overlapped) {
-					m2[idx] = BLU;
-					placed = true;
-				}
-			}
-		}
-	}
-
-	chestPlaced = false;
-	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
-		int randomX = 4 + (rand() % (W - 8));
-		int randomY = 4 + (rand() % (H - 8));
-		int idx = randomY * W + randomX;
-
-		if (m2[idx].r == 255 && m2[idx].g == 255 && m2[idx].b == 255) {
-			bool tooCloseToStart = false;
-			for (int sy = 1; sy < 5; sy++) {
-				for (int sx = 1; sx < 5; sx++) {
-					if (randomX == sx && randomY == sy) tooCloseToStart = true;
-				}
-			}
-
-			bool overlapped = false;
-			for (int y = 0; y < H && !overlapped; y++) {
-				for (int x = 0; x < W && !overlapped; x++) {
-					Color c = m2[y * W + x];
-					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-						(c.r > 150 && c.g < 50 && c.b > 150)) {
-						if (x == randomX && y == randomY) overlapped = true;
-					}
-				}
-			}
-
-			if (!tooCloseToStart && !overlapped) {
-				m2[idx] = PRP;
-				chestPlaced = true;
-			}
-		}
-	}
-
-	// Map 3: Rooms Maze
-	std::vector<Color> m3(W * H, BLK);
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			if (!(y == 0 || y == H - 1 || x == 0 || x == W - 1)) m3[y * W + x] = WHT;
-			if (x == 12 || x == 25) m3[y * W + x] = BLK;
-			if (y == 11) m3[y * W + x] = BLK;
-		}
-	}
-	m3[5 * W + 12] = WHT;
-	m3[16 * W + 12] = WHT;
-	m3[6 * W + 25] = WHT;
-	m3[11 * W + 6] = WHT;
-	m3[11 * W + 18] = WHT;
-	m3[11 * W + 32] = WHT;
-	m3[2 * W + 2] = WHT;
-	m3[2 * W + 3] = WHT;
-	m3[3 * W + 2] = WHT;
-	m3[3 * W + 3] = WHT;
-	m3[2 * W + 2] = GRN;
-
-	// Add random keys to map3
-	for (int keyCount = 0; keyCount < 3; keyCount++) {
-		bool placed = false;
-		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
-			int randomX = 4 + (rand() % (W - 8));
-			int randomY = 4 + (rand() % (H - 8));
-			int idx = randomY * W + randomX;
-
-			if (m3[idx].r == 255 && m3[idx].g == 255 && m3[idx].b == 255) {
-				bool tooCloseToStart = false;
-				for (int sy = 1; sy < 5; sy++) {
-					for (int sx = 1; sx < 5; sx++) {
-						if (randomX == sx && randomY == sy) tooCloseToStart = true;
-					}
-				}
-
-				bool overlapped = false;
-				for (int y = 0; y < H && !overlapped; y++) {
-					for (int x = 0; x < W && !overlapped; x++) {
-						Color c = m3[y * W + x];
-						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-							(c.r > 150 && c.g < 50 && c.b > 150)) {
-							if (x == randomX && y == randomY) overlapped = true;
-						}
-					}
-				}
-
-				if (!tooCloseToStart && !overlapped) {
-					m3[idx] = BLU;
-					placed = true;
-				}
-			}
-		}
-	}
-
-	chestPlaced = false;
-	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
-		int randomX = 4 + (rand() % (W - 8));
-		int randomY = 4 + (rand() % (H - 8));
-		int idx = randomY * W + randomX;
-
-		if (m3[idx].r == 255 && m3[idx].g == 255 && m3[idx].b == 255) {
-			bool tooCloseToStart = false;
-			for (int sy = 1; sy < 5; sy++) {
-				for (int sx = 1; sx < 5; sx++) {
-					if (randomX == sx && randomY == sy) tooCloseToStart = true;
-				}
-			}
-
-			bool overlapped = false;
-			for (int y = 0; y < H && !overlapped; y++) {
-				for (int x = 0; x < W && !overlapped; x++) {
-					Color c = m3[y * W + x];
-					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-						(c.r > 150 && c.g < 50 && c.b > 150)) {
-						if (x == randomX && y == randomY) overlapped = true;
-					}
-				}
-			}
-
-			if (!tooCloseToStart && !overlapped) {
-				m3[idx] = PRP;
-				chestPlaced = true;
-			}
-		}
-	}
-
-	// Map 4: Boss Arena
-	std::vector<Color> mb(W * H, WHT);
-	for (int y = 0; y < H; y++) {
-		for (int x = 0; x < W; x++) {
-			if (x < 8 && y < 6) mb[y * W + x] = BLK;
-			if (x > 29 && y < 6) mb[y * W + x] = BLK;
-			if (x < 8 && y > 15) mb[y * W + x] = BLK;
-			if (x > 29 && y > 15) mb[y * W + x] = BLK;
-			if (y == 0 || y == H - 1 || x == 0 || x == W - 1) mb[y * W + x] = BLK;
-		}
-	}
-	mb[2 * W + 2] = WHT;
-	mb[2 * W + 3] = WHT;
-	mb[3 * W + 2] = WHT;
-	mb[3 * W + 3] = WHT;
-	mb[2 * W + 2] = GRN;
-
-	// Add random keys to boss map
-	for (int keyCount = 0; keyCount < 3; keyCount++) {
-		bool placed = false;
-		for (int attempts = 0; attempts < 100 && !placed; attempts++) {
-			int randomX = 4 + (rand() % (W - 8));
-			int randomY = 4 + (rand() % (H - 8));
-			int idx = randomY * W + randomX;
-
-			if (mb[idx].r == 255 && mb[idx].g == 255 && mb[idx].b == 255) {
-				bool tooCloseToStart = false;
-				for (int sy = 1; sy < 5; sy++) {
-					for (int sx = 1; sx < 5; sx++) {
-						if (randomX == sx && randomY == sy) tooCloseToStart = true;
-					}
-				}
-
-				bool overlapped = false;
-				for (int y = 0; y < H && !overlapped; y++) {
-					for (int x = 0; x < W && !overlapped; x++) {
-						Color c = mb[y * W + x];
-						if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-							(c.r > 150 && c.g < 50 && c.b > 150)) {
-							if (x == randomX && y == randomY) overlapped = true;
-						}
-					}
-				}
-
-				if (!tooCloseToStart && !overlapped) {
-					mb[idx] = BLU;
-					placed = true;
-				}
-			}
-		}
-	}
-
-	chestPlaced = false;
-	for (int attempts = 0; attempts < 100 && !chestPlaced; attempts++) {
-		int randomX = 4 + (rand() % (W - 8));
-		int randomY = 4 + (rand() % (H - 8));
-		int idx = randomY * W + randomX;
-
-		if (mb[idx].r == 255 && mb[idx].g == 255 && mb[idx].b == 255) {
-			bool tooCloseToStart = false;
-			for (int sy = 1; sy < 5; sy++) {
-				for (int sx = 1; sx < 5; sx++) {
-					if (randomX == sx && randomY == sy) tooCloseToStart = true;
-				}
-			}
-
-			bool overlapped = false;
-			for (int y = 0; y < H && !overlapped; y++) {
-				for (int x = 0; x < W && !overlapped; x++) {
-					Color c = mb[y * W + x];
-					if ((c.b > 200 && c.r < 50 && c.g < 50) || 
-						(c.r > 150 && c.g < 50 && c.b > 150)) {
-						if (x == randomX && y == randomY) overlapped = true;
-					}
-				}
-			}
-
-			if (!tooCloseToStart && !overlapped) {
-				mb[idx] = PRP;
-				chestPlaced = true;
-			}
-		}
-	}
-
-	const char* names[4] = { "map1.png", "map2.png", "map3.png", "boss.png" };
-	std::vector<Color>* dataPtrs[4] = { &m1, &m2, &m3, &mb };
-
-	for (int i = 0; i < 4; i++) {
-		std::vector<Color>& mapData = *dataPtrs[i];
-
-		// Place door randomly
-		bool doorPlaced = false;
-		for (int attempts = 0; attempts < 500 && !doorPlaced; attempts++) {
-			int randomX = 3 + (rand() % (W - 6));
-			int randomY = 3 + (rand() % (H - 6));
-			int idx = randomY * W + randomX;
-
-			if (mapData[idx].r == 255 && mapData[idx].g == 255 && mapData[idx].b == 255) {
-				bool tooCloseToStart = false;
-				for (int y = 0; y < H; y++) {
-					for (int x = 0; x < W; x++) {
-						if (mapData[y * W + x].r == 0 && mapData[y * W + x].g > 200 && mapData[y * W + x].b == 0) {
-							int distSq = (randomX - x) * (randomX - x) + (randomY - y) * (randomY - y);
-							if (distSq < 25) {
-								tooCloseToStart = true;
-							}
-						}
-					}
-				}
-
-				if (!tooCloseToStart) {
-					mapData[idx] = RED_;
-					doorPlaced = true;
-				}
-			}
-		}
-
-		if (!doorPlaced) {
-			mapData[11 * W + 22] = RED_;
-		}
-
-		// Export image
-		Image img = GenImageColor(W, H, BLK);
-		Color* imgData = (Color*)img.data;
-
-		for (int j = 0; j < W * H; j++) {
-			imgData[j] = mapData[j];
-		}
-
-		ExportImage(img, names[i]);
-		UnloadImage(img);
-	}
+void Map::AdvanceLevel() {
+	InitLevel(currentLevel + 1);
 }
 
-void Map::LoadMapFromImageFile(const char* fileName) {
-	Image mapImg = LoadImage(fileName);
-	mapRows = mapImg.height;
-	mapCols = mapImg.width;
+void Map::InitLevel(int level) {
+	currentLevel = level;
+	keysCollected = 0;
+	doorUnlocked = false;
+
+	// 1. 動態擴大地圖尺寸：關卡越高，地圖越大！(最大限制在 80x60，避免太卡)
+	mapCols = 30 + std::min(level * 4, 50);
+	mapRows = 20 + std::min(level * 3, 40);
 
 	grid.assign(mapRows, std::vector<int>(mapCols, 0));
 	keyPositions.clear();
@@ -434,52 +31,66 @@ void Map::LoadMapFromImageFile(const char* fileName) {
 	chestPositions.clear();
 	chestOpened.clear();
 
-	for (int y = 0; y < mapRows; y++) {
-		for (int x = 0; x < mapCols; x++) {
-			Color pixel = GetImageColor(mapImg, x, y);
+	// 固定起點在左上角安全區
+	playerStartPos = { tileWidth * 2.5f, tileHeight * 2.5f };
 
-			if (pixel.r == 0 && pixel.g == 0 && pixel.b == 0) {
-				grid[y][x] = 1;
-			}
-			else if (pixel.g > 200 && pixel.r < 50 && pixel.b < 50) {
-				playerStartPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
-				grid[y][x] = 0;
-			}
-			else if (pixel.b > 200 && pixel.r < 50 && pixel.g < 50) {
-				// Blue = Keys
-				keyPositions.push_back({ (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f });
-				keyCollected.push_back(false);
-				grid[y][x] = 0;
-			}
-			else if (pixel.r > 150 && pixel.g < 50 && pixel.b > 150) {
-				// Purple = Chest
-				chestPositions.push_back({ (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f });
-				chestOpened.push_back(false);
-				grid[y][x] = 0;
-			}
-			else if (pixel.r > 200 && pixel.g < 50 && pixel.b < 50) {
-				// Red = Door
-				doorPos = { (float)x * tileWidth + tileWidth / 2.0f, (float)y * tileHeight + tileHeight / 2.0f };
-				grid[y][x] = 0;
-			}
-			else {
-				grid[y][x] = 0;
+	// 2. 判斷是否為 Boss 關卡 (每 5 關觸發)
+	if (IsBossLevel()) {
+		// Boss 競技場：超大空地，四周有牆，中間散落一些柱子當掩體
+		for (int y = 0; y < mapRows; y++) {
+			for (int x = 0; x < mapCols; x++) {
+				if (x == 0 || y == 0 || x == mapCols - 1 || y == mapRows - 1) {
+					grid[y][x] = 1;
+				}
+				else if (x % 15 == 0 && y % 15 == 0 && x > 5 && y > 5 && x < mapCols - 5 && y < mapRows - 5) {
+					grid[y][x] = 1; // 掩體柱子
+				}
 			}
 		}
 	}
-	UnloadImage(mapImg);
-}
+	else {
+		// 普通關卡：動態迷宮生成
+		bool connected = false;
+		while (!connected) {
+			// 先鋪滿空地
+			for (int y = 0; y < mapRows; y++) {
+				for (int x = 0; x < mapCols; x++) {
+					if (x == 0 || y == 0 || x == mapCols - 1 || y == mapRows - 1) grid[y][x] = 1;
+					else grid[y][x] = 0;
+				}
+			}
 
-void Map::InitLayer(DungeonLayer layer) {
-	currentLayer = layer;
-	keysCollected = 0;
-	doorUnlocked = false;
-	playerStartPos = { 120.0f, 120.0f };
+			// 依據關卡數增加牆壁障礙物的密度 (15% ~ 35%)
+			float density = 0.15f + std::min(level * 0.015f, 0.20f);
+			int numWalls = (int)(mapCols * mapRows * density);
 
-	if (layer == DungeonLayer::LAYER_1) LoadMapFromImageFile("map1.png");
-	else if (layer == DungeonLayer::LAYER_2) LoadMapFromImageFile("map2.png");
-	else if (layer == DungeonLayer::LAYER_3) LoadMapFromImageFile("map3.png");
-	else if (layer == DungeonLayer::BOSS_ROOM) LoadMapFromImageFile("boss.png");
+			for (int i = 0; i < numWalls; i++) {
+				int rx = 2 + rand() % (mapCols - 4);
+				int ry = 2 + rand() % (mapRows - 4);
+				// 絕對保護玩家起點不被牆塞死 (留出 6x6 空地)
+				if (rx < 6 && ry < 6) continue;
+				grid[ry][rx] = 1;
+			}
+
+			// 利用完美連通性檢查，不通就打掉重做！
+			connected = IsMapConnected();
+		}
+	}
+
+	// 3. 放置物件 (利用 GetRandomFreePosition)
+	for (int i = 0; i < 3; i++) { // 固定生成 3 把鑰匙
+		keyPositions.push_back(GetRandomFreePosition());
+		keyCollected.push_back(false);
+	}
+
+	chestPositions.push_back(GetRandomFreePosition());
+	chestOpened.push_back(false);
+
+	// 放置下一層的門 (確保它離起點夠遠)
+	doorPos = GetRandomFreePosition();
+	while (sqrtf(powf(doorPos.x - playerStartPos.x, 2) + powf(doorPos.y - playerStartPos.y, 2)) < (mapCols * tileWidth * 0.4f)) {
+		doorPos = GetRandomFreePosition();
+	}
 }
 
 void Map::Update(Vector2 playerMapPos) {
@@ -502,18 +113,18 @@ void Map::Update(Vector2 playerMapPos) {
 	if (doorUnlocked) {
 		float distToDoor = sqrtf(powf(playerMapPos.x - doorPos.x, 2) + powf(playerMapPos.y - doorPos.y, 2));
 		if (distToDoor < 20.0f) {
-			AdvanceLayer();
+			AdvanceLevel(); // 【修正】呼叫新的 AdvanceLevel
 		}
 	}
 }
 
 void Map::DrawBaseMap() {
-	// 先畫所有路面為灰色
 	for (int y = 0; y < mapRows; y++) {
 		for (int x = 0; x < mapCols; x++) {
 			if (grid[y][x] == 0) {
 				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, LIGHTGRAY);
-			} else {
+			}
+			else {
 				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, BLACK);
 			}
 		}
@@ -634,16 +245,4 @@ bool Map::IsMapConnected() {
 	}
 
 	return visitedFloor == totalFloor;
-}
-
-void Map::AdvanceLayer() {
-	if (currentLayer == DungeonLayer::LAYER_1) {
-		InitLayer(DungeonLayer::LAYER_2);
-	} else if (currentLayer == DungeonLayer::LAYER_2) {
-		InitLayer(DungeonLayer::LAYER_3);
-	} else if (currentLayer == DungeonLayer::LAYER_3) {
-		InitLayer(DungeonLayer::BOSS_ROOM);
-	} else if (currentLayer == DungeonLayer::BOSS_ROOM) {
-		InitLayer(DungeonLayer::VICTORY);
-	}
 }

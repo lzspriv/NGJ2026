@@ -86,7 +86,7 @@ int main() {
 	auto spawnChestRoomEnemies = [&]() {
 		chestRoomEnemies.clear();
 		for (int i = 0; i < 3; i++) {
-			int typeCount = ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) ? 5 : 4;
+			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 			int t = std::rand() % typeCount;
 			float px = 80.0f + (float)(std::rand() % (currentWidth - 160));
 			int upperMinY = 60;
@@ -122,17 +122,15 @@ int main() {
 	enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 	enemies.emplace_back("Slime", 6, 3, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 	enemies.emplace_back("Bat", 5, 3, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
-	if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
+	if (dungeonMap.GetCurrentLevel() >= 2) {
 		enemies.emplace_back("Assassin", 5, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 	}
 
-	// 指定部分敵人為遠程攻擊型
-	if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f); // Wolf
-	if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f); // Bat
+	if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f);
+	if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f);
 
-
-	// 初始化關卡層級追蹤，避免第一幀時觸發關卡重置
-	DungeonLayer lastLayer = dungeonMap.GetCurrentLayer();
+	// 【修改】初始化關卡層級追蹤，使用 int
+	int lastLevel = dungeonMap.GetCurrentLevel();
 
 	// 近戰命中追蹤：每次揮劍每個敵人只會吃到一次傷害
 	std::vector<bool> swordHitThisSwing(enemies.size(), false);
@@ -279,39 +277,53 @@ int main() {
 		if (upAvailable < 0) upAvailable = 0;
 
 		// 關卡切換重置機制
-		if (dungeonMap.GetCurrentLayer() != lastLayer) {
-			if (dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
-				// 每一關都從視窗正中間開始
-				float cX = currentWidth * 0.5f;
-				float cY = currentHeight * 0.5f;
+		if (dungeonMap.GetCurrentLevel() != lastLevel) {
+			// 每一關都從視窗正中間開始
+			float cX = currentWidth * 0.5f;
+			float cY = currentHeight * 0.5f;
 
-				// 將視窗置中到顯示器
-				int newX = monLeft + (maxWidth - currentWidth) / 2;
-				int newY = monTop + (maxHeight - currentHeight) / 2;
-				SetWindowPosition(newX, newY);
+			// 將視窗置中到顯示器
+			int newX = monLeft + (maxWidth - currentWidth) / 2;
+			int newY = monTop + (maxHeight - currentHeight) / 2;
+			SetWindowPosition(newX, newY);
 
-				playerPos = { cX, cY };
-				winPos = GetWindowPosition();
+			playerPos = { cX, cY };
+			winPos = GetWindowPosition();
 
-				// 切換到新關卡時重生怪物
-				enemies.clear();
+			// 切換到新關卡時重生怪物
+			enemies.clear();
+
+			if (dungeonMap.IsBossLevel()) {
+				// 【終極大 Boss 降臨】：每 5 關出現，血量與攻擊力隨層數飆升！
+				int bossHp = 200 + (dungeonMap.GetCurrentLevel() * 40);
+				int bossDmg = 10 + dungeonMap.GetCurrentLevel();
+				enemies.emplace_back("GIANT BOSS", bossHp, bossDmg, 5, 55.0f, 600.0f, 30.0f, 0.8f, spawnRandom());
+				enemies.back().SetRangedAttack(true, 400.0f, 0.5f); // 瘋狂射擊
+
+				// 帶幾個護衛
+				for (int i = 0; i < 3; i++) {
+					enemies.emplace_back("Assassin", 7, 6, 0, 25.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+				}
+			}
+			else {
+				// 普通關卡怪
 				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 				enemies.emplace_back("Wolf", 8, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
-				if ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) {
+				if (dungeonMap.GetCurrentLevel() >= 2) {
 					enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 				}
-
 				if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f);
 				if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f);
-
-				enemySpawnTimer = 0.0f;
-				swordHitThisSwing.assign(enemies.size(), false);
-				wasSwordActive = false;
-				declinedChestIndex = -1;
 			}
-			lastLayer = dungeonMap.GetCurrentLayer();
+
+			enemySpawnTimer = 0.0f;
+			swordHitThisSwing.assign(enemies.size(), false);
+			wasSwordActive = false;
+			declinedChestIndex = -1;
+
+			lastLevel = dungeonMap.GetCurrentLevel();
 		}
 
 		float centerX = currentWidth * 0.5f;
@@ -336,7 +348,7 @@ int main() {
 
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
 		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
-		if (!inChestRoom && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY && !isUiPause) {
+		if (!inChestRoom && !isUiPause) {
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -653,12 +665,12 @@ int main() {
 			}
 		}
 
-		// 每 7 秒新增一隻隨機怪物（僅一般地圖）
-		if (!inChestRoom && !isUiPause && dungeonMap.GetCurrentLayer() != DungeonLayer::VICTORY) {
+		// 每 7 秒新增一隻隨機怪物（僅一般地圖，Boss關卡不刷）
+		if (!inChestRoom && !isUiPause && !dungeonMap.IsBossLevel()) {
 			enemySpawnTimer += dt;
 			if (enemySpawnTimer >= enemySpawnInterval) {
 				enemySpawnTimer -= enemySpawnInterval;
-				int typeCount = ((int)dungeonMap.GetCurrentLayer() >= (int)DungeonLayer::LAYER_2) ? 5 : 4;
+				int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 				int t = std::rand() % typeCount;
 				switch (t) {
 				case 0:
@@ -808,11 +820,7 @@ int main() {
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		if (dungeonMap.GetCurrentLayer() == DungeonLayer::VICTORY) {
-			DrawText("VICTORY!", currentWidth / 2 - 60, currentHeight / 2 - 10, 24, GOLD);
-			DrawText("Dungeon Defeated!", currentWidth / 2 - 80, currentHeight / 2 + 20, 16, WHITE);
-		}
-		else {
+		
 			BeginMode2D(camera);
 			if (!inChestRoom) {
 				dungeonMap.DrawBaseMap();
@@ -911,8 +919,10 @@ int main() {
 			}
 
 			DrawRectangle(8, 8, 260, 68, Fade(BLACK, 0.7f));
-			const char* gNames[] = { "Layer 1 (Maze)", "Layer 2 (Spiral)", "Layer 3 (Rooms)", "FINAL BOSS" };
-			DrawText(gNames[(int)dungeonMap.GetCurrentLayer()], 14, 12, 14, ORANGE);
+			const char* levelName = dungeonMap.IsBossLevel() ?
+				TextFormat("LAYER %d [BOSS ARENA]", dungeonMap.GetCurrentLevel()) :
+				TextFormat("LAYER %d", dungeonMap.GetCurrentLevel());
+			DrawText(levelName, 14, 12, 14, dungeonMap.IsBossLevel() ? RED : ORANGE);
 			DrawText(TextFormat("Key Status: %d/%d", dungeonMap.GetKeysCollected(), dungeonMap.GetTotalKeys()), 14, 32, 14, dungeonMap.IsDoorUnlocked() ? GREEN : RED);
 			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
 
@@ -937,13 +947,6 @@ int main() {
 				// 標題
 				DrawText("Chest Reward - Choose One:", uiX + 20, uiY + 15, 16, WHITE);
 
-				// 三個獎勵選項
-				const char* rewardNames[] = { 
-					"[1] Max HP +20", 
-					"[2] Speed +1", 
-					"[3] Attack Range +10" 
-				};
-				Color rewardColors[] = { RED, BLUE, ORANGE };
 
 				// 三個隨機抽出的獎勵選項
 				for (int i = 0; i < 3; i++) {
@@ -956,9 +959,9 @@ int main() {
 					DrawText(TextFormat("[%d] %s", i + 1, currentRewards[i].text), uiX + 35, optionY + 8, 14, optColor);
 				}
 
-				DrawText("Selecting in...", uiX + 20, uiY + 180, 10, GRAY);
+				DrawText("Press [1], [2], or [3] to confirm.", uiX + 20, uiY + 180, 12, GRAY);
 			}
-		}
+		
 		// ==========================================
 			// 寶箱進入確認彈出視窗 UI
 			// ==========================================
