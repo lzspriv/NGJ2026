@@ -21,6 +21,9 @@ static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
 static Texture2D treasureChestTexture;
 
+static Texture2D wallTexture;
+static Texture2D floorTexture;
+
 static Texture2D closeDoorTexture;//ToDo
 static Texture2D openDoorTexture;//ToDo
 
@@ -70,6 +73,9 @@ void AssetManager::LoadAllAssets() {
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
 
+    wallTexture = LoadTexture("assets/wall.png");
+    floorTexture = LoadTexture("assets/floor.png");
+
     treasureChestTexture = LoadTexture("assets/treasureChest.png");;
 
 	openDoorTexture = LoadTexture("assets/Door_Opened.png");
@@ -108,6 +114,9 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(bossTexture);
     UnloadTexture(itemKeyTexture);
     UnloadTexture(buffItemTexture);
+
+    UnloadTexture(wallTexture);
+    UnloadTexture(floorTexture);
 
     UnloadTexture(openDoorTexture);
     UnloadTexture(closeDoorTexture);
@@ -152,6 +161,9 @@ Texture2D AssetManager::GetAssassinTexture() { return assassinTexture; }
 Texture2D AssetManager::GetOpenDoorTexture() { return openDoorTexture; };
 Texture2D AssetManager::GetCloseDoorTexture() { return closeDoorTexture; };
 Texture2D AssetManager::GetBonusDoorTexture() { return bonusDoorTexture; };
+
+Texture2D AssetManager::GetWallTexture() { return wallTexture; };
+Texture2D AssetManager::GetFloorTexture() { return floorTexture; };
 
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
 Texture2D AssetManager::GetTreasureChestTexture() { return treasureChestTexture; }

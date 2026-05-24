@@ -34,6 +34,9 @@ public:
     static Texture2D GetCloseDoorTexture();
     static Texture2D GetBonusDoorTexture();
 
+    static Texture2D GetWallTexture();
+    static Texture2D GetFloorTexture();
+
     static Texture2D GetItemKeyTexture();
     static Texture2D GetBuffItemTexture();
 
