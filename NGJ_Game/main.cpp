@@ -93,7 +93,7 @@ int main() {
 
 	auto spawnChestRoomEnemies = [&]() {
 		chestRoomEnemies.clear();
-		int bonus = dungeonMap.GetCurrentLevel() * 3; // <--- 在迴圈外或迴圈內算好 bonus 都可以
+		int bonus = dungeonMap.GetCurrentLevel() * 2; // <--- 在迴圈外或迴圈內算好 bonus 都可以
 
 		for (int i = 0; i < 3; i++) {
 			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
@@ -133,7 +133,7 @@ int main() {
 			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 			int t = std::rand() % typeCount;
 			// 1. 先計算加成值
-			int bonus = dungeonMap.GetCurrentLevel() * 3;
+			int bonus = dungeonMap.GetCurrentLevel() * 2;
 
 			// 2. 將 bonus 加到各怪物的 HP (第 2 參數) 與 Attack (第 3 參數)
 			switch (t) {
@@ -186,6 +186,12 @@ int main() {
 	// ==========================================
 	int currentBulletDamage = 2; // 原本是常數，現在變成可升級變數
 	int currentSwordDamage = 4;
+	// 在 currentBulletDamage 附近新增以下結構：
+	struct HealthOrb {
+		Vector2 pos;
+		bool active;
+	};
+	std::vector<HealthOrb> healthOrbs; // 存放畫面上所有的紅點
 
 	enum class RewardType { MAX_HP, SPEED, ATTACK_RANGE, SWORD_DMG, BULLET_DMG };
 
@@ -353,6 +359,7 @@ int main() {
 
 			// 切換到新關卡時重生怪物
 			enemies.clear();
+			healthOrbs.clear();
 
 			// 找到 if (dungeonMap.GetCurrentLevel() != lastLevel) 區塊內的 Boss 生成程式碼
 			if (dungeonMap.IsBossLevel()) {
@@ -364,7 +371,7 @@ int main() {
 			}
 			else {
 				// 普通關卡怪
-				int bonus = dungeonMap.GetCurrentLevel() * 3;
+				int bonus = dungeonMap.GetCurrentLevel() * 2;
 
 				enemies.emplace_back("Goblin", 8 + bonus, 5 + bonus, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 				enemies.emplace_back("Wolf", 12 + bonus, 5 + bonus, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
@@ -735,7 +742,30 @@ int main() {
 				}
 			}
 		}
+		// ==========================================
+		// 🔻 第三步貼在這裡：偵測玩家是否踩到補血紅點 🔻
+		for (auto& orb : healthOrbs) {
+			if (!orb.active) continue;
+			float dx = playerMapPos.x - orb.pos.x;
+			float dy = playerMapPos.y - orb.pos.y;
+			// 如果玩家碰到紅點 (距離小於玩家半徑+紅點半徑)
+			if (sqrtf(dx * dx + dy * dy) <= playerRadius + 8.0f) {
+				orb.active = false;
 
+				// 【修改】動態計算回血量：基礎值 5 + (關卡層數 * 1.5)
+				int healAmount = 5 + (int)(dungeonMap.GetCurrentLevel() * 1.5f);
+				player.currentHp += healAmount;
+
+				if (player.currentHp > player.maxHp) {
+					player.currentHp = player.maxHp;
+				}
+			}
+		}
+		// 🔺 第三步結束 🔺
+		// ==========================================
+
+
+		// 🔍 你搜尋的目標在這裡：
 		// 更新敵人狀態（使用世界座標的 player 位置）
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
 		NGJ::Vec2 viewMin((float)(winPos.x - monLeft), (float)(winPos.y - monTop));
@@ -831,7 +861,7 @@ int main() {
 				int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 				int t = std::rand() % typeCount;
 				// 1. 先計算加成值
-				int bonus = dungeonMap.GetCurrentLevel() * 3;
+				int bonus = dungeonMap.GetCurrentLevel() * 2;
 
 				// 2. 將 bonus 加到各怪物的 HP (第 2 參數) 與 Attack (第 3 參數)
 				switch (t) {
@@ -939,7 +969,13 @@ int main() {
 				float bdy = bulletWorld.y - enemyPos.y;
 				float d = sqrtf(bdx * bdx + bdy * bdy);
 				if (d <= enemyHitRadius + 4.0f) {
+					bool wasDead = e.GetIsDead();
 					e.TakeDamage(currentBulletDamage);
+					if (!wasDead && e.GetIsDead()) { // 如果是這發子彈剛好打死牠
+						if (std::rand() % 100 < 30) { // 30% 機率掉落紅點
+							healthOrbs.push_back({ enemyPos, true });
+						}
+					}
 					b.active = false;
 					break;
 				}
@@ -970,7 +1006,14 @@ int main() {
 				float sdy = swordCenterWorld.y - enemyPos.y;
 				float d = sqrtf(sdx * sdx + sdy * sdy);
 				if (d <= player.attackRange + enemyHitRadius) {
+					bool wasDead = e.GetIsDead();
 					e.TakeDamage(currentSwordDamage);
+					swordHitThisSwing[ei] = true;
+					if (!wasDead && e.GetIsDead()) { // 如果是這刀剛好砍死牠
+						if (std::rand() % 100 < 30) { // 30% 機率掉落紅點
+							healthOrbs.push_back({ enemyPos, true });
+						}
+					}
 					swordHitThisSwing[ei] = true;
 				}
 			}
@@ -1052,20 +1095,20 @@ int main() {
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, barW, 5, DARKGRAY);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, hpW, 5, RED);
 				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, WHITE);
+				// ==========================================
+			// 🔻 第五步貼在這裡：畫出掉落在地上的補血紅點 🔻
+				for (const auto& orb : healthOrbs) {
+					if (orb.active) {
+						DrawCircleV(orb.pos, 6.0f, RED); // 實心紅點
+						DrawCircleLines((int)orb.pos.x, (int)orb.pos.y, 9, PINK); // 外圍加上粉紅色光圈增加辨識度
+					}
+				}
+				// 🔺 第五步結束 🔺
+				// ==========================================
 			}
 
 			EndMode2D();
 
-			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
-			if (!drawEnemies.empty()) {
-				const auto& e0 = drawEnemies[0];
-				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
-				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
-				DrawCircleV(eScreen, 6.0f, RED);
-				DrawText(TextFormat("Enemies: %d", (int)drawEnemies.size()), 10, 10, 14, WHITE);
-				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
-				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
-			}
 			// 顯示玩家的 world->screen
 			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
 			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
