@@ -166,10 +166,14 @@
     <Image Include="assets\Door_Bonus.png" />
     <Image Include="assets\Door_Closed.png" />
     <Image Include="assets\Door_Opened.png" />
+    <Image Include="assets\floor.png" />
     <Image Include="assets\goblin.png" />
     <Image Include="assets\key.png" />
+    <Image Include="assets\menu.png" />
     <Image Include="assets\player.png" />
+    <Image Include="assets\slime.png" />
     <Image Include="assets\treasureChest.png" />
+    <Image Include="assets\wall.png" />
     <Image Include="assets\wolf.png" />
   </ItemGroup>
   <ItemGroup>

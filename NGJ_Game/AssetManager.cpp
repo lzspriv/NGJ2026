@@ -11,14 +11,18 @@ static Particle particles[MAX_PARTICLES];
 static Texture2D menuBackground;
 static Texture2D playerTexture;//check
 
+static Texture2D slimeTexture;//check
 static Texture2D batTexture;//check
 static Texture2D wolfTexture;//check
 static Texture2D goblinTexture;//check
-static Texture2D assassinTexture;
+static Texture2D assassinTexture;//check
 
 static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
 static Texture2D treasureChestTexture;
+
+static Texture2D wallTexture;
+static Texture2D floorTexture;
 
 static Texture2D closeDoorTexture;//ToDo
 static Texture2D openDoorTexture;//ToDo
@@ -60,6 +64,7 @@ void AssetManager::LoadAllAssets() {
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
 
+    slimeTexture = LoadTexture("assets/slime.png");
     batTexture = LoadTexture("assets/bat.png");
     wolfTexture = LoadTexture("assets/wolf.png");
     goblinTexture = LoadTexture("assets/goblin.png");
@@ -67,6 +72,9 @@ void AssetManager::LoadAllAssets() {
 
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
+
+    wallTexture = LoadTexture("assets/wall.png");
+    floorTexture = LoadTexture("assets/floor.png");
 
     treasureChestTexture = LoadTexture("assets/treasureChest.png");;
 
@@ -107,10 +115,14 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(itemKeyTexture);
     UnloadTexture(buffItemTexture);
 
+    UnloadTexture(wallTexture);
+    UnloadTexture(floorTexture);
+
     UnloadTexture(openDoorTexture);
     UnloadTexture(closeDoorTexture);
     UnloadTexture(bonusDoorTexture);
 
+    UnloadTexture(slimeTexture);
     UnloadTexture(batTexture);
     UnloadTexture(wolfTexture);
     UnloadTexture(goblinTexture);
@@ -140,6 +152,7 @@ Texture2D AssetManager::GetMenuBackground() { return menuBackground; }
 Texture2D AssetManager::GetPlayerTexture() { return playerTexture; }
 Texture2D AssetManager::GetBossTexture() { return bossTexture; }
 
+Texture2D AssetManager::GetSlimeTexture() { return slimeTexture; }
 Texture2D AssetManager::GetBatTexture() { return batTexture; }
 Texture2D AssetManager::GetWolfTexture() { return wolfTexture; }
 Texture2D AssetManager::GetGoblinTexture() { return goblinTexture; }
@@ -148,6 +161,9 @@ Texture2D AssetManager::GetAssassinTexture() { return assassinTexture; }
 Texture2D AssetManager::GetOpenDoorTexture() { return openDoorTexture; };
 Texture2D AssetManager::GetCloseDoorTexture() { return closeDoorTexture; };
 Texture2D AssetManager::GetBonusDoorTexture() { return bonusDoorTexture; };
+
+Texture2D AssetManager::GetWallTexture() { return wallTexture; };
+Texture2D AssetManager::GetFloorTexture() { return floorTexture; };
 
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
 Texture2D AssetManager::GetTreasureChestTexture() { return treasureChestTexture; }
