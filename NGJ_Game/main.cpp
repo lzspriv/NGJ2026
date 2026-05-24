@@ -1040,7 +1040,35 @@ int main() {
 				}
 
 				// 2. 呼叫動畫繪製函式
-				AssetManager::DrawEntityAnimated(tex, wp, enemyFrames, scale, animSpeed, WHITE);
+				// 1. 計算怪物面向：如果怪物在移動，就看向移動方向；否則看向玩家
+				float rotationAngle = 0.0f;
+
+				// 計算怪物到玩家的方向向量
+				float dirX = playerMapPos.x - wp.x;
+				float dirY = playerMapPos.y - wp.y;
+
+				// 只有在追擊或攻擊狀態時，才讓怪物看向玩家
+				if (e.GetState() == NGJ::EnemyState::Chase || e.GetState() == NGJ::EnemyState::Attack) {
+					// 使用 atan2 算出弧度，再轉成角度
+					rotationAngle = atan2f(dirY, dirX) * (180.0f / 3.14159f);
+				}
+				else {
+					// 若在巡邏，則看向移動方向 (這裡需用到 e 的位置變化，簡單起見預設 0 度)
+					rotationAngle = 0.0f;
+				}
+
+				// 2. 呼叫繪製函式 (注意：我們需要把 rotationAngle 傳給繪圖層)
+				// 因為 AssetManager 的 DrawEntityAnimated 目前沒吃到旋轉角度，
+				// 我們直接在這裡用 DrawTexturePro 來實現，或者修改 AssetManager。
+
+				// 建議直接在 main.cpp 這樣畫，最精準：
+				int frameWidth = tex.width / enemyFrames;
+				Rectangle srcRec = { 0.0f, 0.0f, (float)frameWidth, (float)tex.height };
+				Rectangle destRec = { wp.x, wp.y, (float)frameWidth * scale, (float)tex.height * scale };
+				Vector2 origin = { (float)frameWidth * scale / 2.0f, (float)tex.height * scale / 2.0f };
+
+				// 畫出來！加上 rotationAngle 參數
+				DrawTexturePro(tex, srcRec, destRec, origin, rotationAngle + 90.0f, WHITE);
 
 				// Goblin 盾牌防線線條（保持繪製在怪物前方）
 				if (e.name == "Goblin") {
@@ -1071,6 +1099,27 @@ int main() {
 
 			EndMode2D();
 
+			// Draw player at window-local for UI
+			player.playerPos = playerPos;
+			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
+			if (inChestRoom) {
+				DrawText("REWARD ROOM", 12, currentHeight - 22, 14, GOLD);
+			}
+
+			DrawRectangle(8, 8, 260, 68, Fade(BLACK, 0.7f));
+			const char* levelName = dungeonMap.IsBossLevel() ?
+				TextFormat("LAYER %d [BOSS ARENA]", dungeonMap.GetCurrentLevel()) :
+				TextFormat("LAYER %d", dungeonMap.GetCurrentLevel());
+			DrawText(levelName, 14, 12, 14, dungeonMap.IsBossLevel() ? RED : ORANGE);
+			DrawText(TextFormat("Key Status: %d/%d", dungeonMap.GetKeysCollected(), dungeonMap.GetTotalKeys()), 14, 32, 14, dungeonMap.IsDoorUnlocked() ? GREEN : RED);
+			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
+
+			// 調試信息：顯示地圖大小和鑰匙數量
+			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth() / 50, dungeonMap.GetTotalHeight() / 50), 10, 100, 12, YELLOW);
+			DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
+
+			
+
 			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
 			if (!drawEnemies.empty()) {
 				const auto& e0 = drawEnemies[0];
@@ -1095,17 +1144,7 @@ int main() {
 				DrawText("REWARD ROOM", 12, currentHeight - 22, 14, GOLD);
 			}
 
-			DrawRectangle(8, 8, 260, 68, Fade(BLACK, 0.7f));
-			const char* levelName = dungeonMap.IsBossLevel() ?
-				TextFormat("LAYER %d [BOSS ARENA]", dungeonMap.GetCurrentLevel()) :
-				TextFormat("LAYER %d", dungeonMap.GetCurrentLevel());
-			DrawText(levelName, 14, 12, 14, dungeonMap.IsBossLevel() ? RED : ORANGE);
-			DrawText(TextFormat("Key Status: %d/%d", dungeonMap.GetKeysCollected(), dungeonMap.GetTotalKeys()), 14, 32, 14, dungeonMap.IsDoorUnlocked() ? GREEN : RED);
-			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
 
-			// 調試信息：顯示地圖大小和鑰匙數量
-			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth()/50, dungeonMap.GetTotalHeight()/50), 10, 100, 12, YELLOW);
-			DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
 
 			// 獎勵選擇 UI
 			if (showRewardUI && currentChestIndex >= 0) {
