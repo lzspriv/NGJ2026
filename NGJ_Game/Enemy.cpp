@@ -246,6 +246,9 @@ void NGJ::Enemy::SpawnBossBullets360() {
 		b.active = true;
 		bullets.push_back(b);
 	}
+
+	// 【新增】：讓每一波彈幕旋轉 7.5 度，形成華麗的螺旋彈幕網！
+	bossBulletAngleOffset += 7.5f;
 }
 
 void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Map* map, const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
@@ -280,7 +283,7 @@ void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Ma
 		}
 		if (bossBarrageWaveIndex >= bossBarrageWaveCount) {
 			bossBulletBarrageActive = false;
-			ClearBossBullets();
+			// 絕對不要在這裡清除子彈，讓它們繼續飛向玩家！
 			TriggerBossIdleLock(5.0f);
 			bossAtCenter = false;
 		}

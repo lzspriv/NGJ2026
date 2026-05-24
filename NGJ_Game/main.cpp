@@ -383,6 +383,11 @@ int main() {
 			wasSwordActive = false;
 			declinedChestIndex = -1;
 
+			// 【新增】：過關時徹底重置 Boss 的技能與召喚狀態，避免下一輪 Boss 戰發呆
+			bossBarragePrepared = false;
+			bossSummonResolved = false;
+			bossObstacleSpawned = false;
+
 			lastLevel = dungeonMap.GetCurrentLevel();
 		}
 
@@ -407,8 +412,14 @@ int main() {
 		}
 
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
-		// 注意：主移動邏輯在 main 處理，移動完成後會把位置同步到 player 以處理攻擊輸入
 		if (!inChestRoom && !isUiPause) {
+
+			// 【新增】：一個強大的碰撞小幫手，同時檢查牆壁與 Boss 障礙物！
+			auto IsBlocked = [&](float x, float y) {
+				return dungeonMap.IsWall(x, y) || dungeonMap.IsBossObstacleAt(x, y);
+				};
+
+			// 右移
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -435,8 +446,9 @@ int main() {
 				float potentialMapX = (targetWinX + targetPlayerX) - monLeft;
 				float currentMapY = (winPos.y + playerPos.y) - monTop;
 
-				if (designerMode || (!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY) &&
-					!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY))) {
+				// 【修改】：使用 IsBlocked 替代 IsWall
+				if (designerMode || (!IsBlocked(potentialMapX + playerRadius, currentMapY) &&
+					!IsBlocked(potentialMapX - playerRadius, currentMapY))) {
 					playerPos.x = targetPlayerX;
 					if ((int)winPos.x != targetWinX) {
 						SetWindowPosition(targetWinX, (int)winPos.y);
@@ -445,6 +457,7 @@ int main() {
 				}
 			}
 
+			// 左移
 			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
 				float targetPlayerX = playerPos.x;
 				int targetWinX = (int)winPos.x;
@@ -471,8 +484,9 @@ int main() {
 				float potentialMapX = (targetWinX + targetPlayerX) - monLeft;
 				float currentMapY = (winPos.y + playerPos.y) - monTop;
 
-				if (designerMode || (!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY) &&
-					!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY))) {
+				// 【修改】：使用 IsBlocked 替代 IsWall
+				if (designerMode || (!IsBlocked(potentialMapX - playerRadius, currentMapY) &&
+					!IsBlocked(potentialMapX + playerRadius, currentMapY))) {
 					playerPos.x = targetPlayerX;
 					if ((int)winPos.x != targetWinX) {
 						SetWindowPosition(targetWinX, (int)winPos.y);
@@ -481,6 +495,7 @@ int main() {
 				}
 			}
 
+			// 下移
 			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
@@ -507,8 +522,9 @@ int main() {
 				float currentMapX = (winPos.x + playerPos.x) - monLeft;
 				float potentialMapY = (targetWinY + targetPlayerY) - monTop;
 
-				if (designerMode || (!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius) &&
-					!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius))) {
+				// 【修改】：使用 IsBlocked 替代 IsWall
+				if (designerMode || (!IsBlocked(currentMapX, potentialMapY + playerRadius) &&
+					!IsBlocked(currentMapX, potentialMapY - playerRadius))) {
 					playerPos.y = targetPlayerY;
 					if ((int)winPos.y != targetWinY) {
 						SetWindowPosition((int)winPos.x, targetWinY);
@@ -517,6 +533,7 @@ int main() {
 				}
 			}
 
+			// 上移
 			if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
 				float targetPlayerY = playerPos.y;
 				int targetWinY = (int)winPos.y;
@@ -543,8 +560,9 @@ int main() {
 				float currentMapX = (winPos.x + playerPos.x) - monLeft;
 				float potentialMapY = (targetWinY + targetPlayerY) - monTop;
 
-				if (designerMode || (!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius) &&
-					!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius))) {
+				// 【修改】：使用 IsBlocked 替代 IsWall
+				if (designerMode || (!IsBlocked(currentMapX, potentialMapY - playerRadius) &&
+					!IsBlocked(currentMapX, potentialMapY + playerRadius))) {
 					playerPos.y = targetPlayerY;
 					if ((int)winPos.y != targetWinY) {
 						SetWindowPosition((int)winPos.x, targetWinY);
@@ -1033,7 +1051,7 @@ int main() {
 				int barW = 30; int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, barW, 5, DARKGRAY);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, hpW, 5, RED);
-				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, BLACK);
+				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, WHITE);
 			}
 
 			EndMode2D();
