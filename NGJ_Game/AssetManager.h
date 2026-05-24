@@ -22,9 +22,13 @@ public:
     static Texture2D GetPlayerTexture();
     static Texture2D GetBossTexture();
 
-    static Texture2D GetEnemy1Texture();
-    static Texture2D GetEnemy2Texture();
-    static Texture2D GetEnemy3Texture();
+    static Texture2D GetBatTexture();
+    static Texture2D GetWolfTexture();
+    static Texture2D GetGoblinTexture();
+    static Texture2D GetAssassinTexture();
+
+    static Texture2D GetOpenDoorTexture();
+    static Texture2D GetCloseDoorTexture();
 
     static Texture2D GetItemKeyTexture();
     static Texture2D GetBuffItemTexture();

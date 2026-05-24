@@ -11,12 +11,19 @@ static Particle particles[MAX_PARTICLES];
 static Texture2D menuBackground;
 static Texture2D playerTexture;//check
 
-static Texture2D enemy1Texture;//check
-static Texture2D enemy2Texture;//check
-static Texture2D enemy3Texture;//check
+static Texture2D batTexture;//check
+static Texture2D wolfTexture;//check
+static Texture2D goblinTexture;//check
+static Texture2D assassinTexture;
 
 static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
+
+static Texture2D closeDoorTexture;//ToDo
+static Texture2D openDoorTexture;//ToDo
+
+static Texture2D extraRoomTexture;//ToDo
+
 static Texture2D buffItemTexture;//check
 
 static Music bgmMenu;//check
@@ -52,12 +59,16 @@ void AssetManager::LoadAllAssets() {
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
 
-    enemy1Texture = LoadTexture("assets/enemy1.png");
-    enemy2Texture = LoadTexture("assets/enemy2.png");
-    enemy3Texture = LoadTexture("assets/enemy3.png");
+    batTexture = LoadTexture("assets/bat.png");
+    wolfTexture = LoadTexture("assets/wolf.png");
+    goblinTexture = LoadTexture("assets/goblin.png");
+    assassinTexture = LoadTexture("assets/assassin.png");
 
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
+
+	openDoorTexture = LoadTexture("assets/Door_Opened.png");
+	closeDoorTexture = LoadTexture("assets/Door_Closed.png");
 
     // 載入聲音串流
     bgmMenu = LoadMusicStream("assets/bgm_menu.mp3");
@@ -91,9 +102,13 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(itemKeyTexture);
     UnloadTexture(buffItemTexture);
 
-    UnloadTexture(enemy1Texture);
-    UnloadTexture(enemy2Texture);
-    UnloadTexture(enemy3Texture);
+    UnloadTexture(openDoorTexture);
+    UnloadTexture(closeDoorTexture);
+
+    UnloadTexture(batTexture);
+    UnloadTexture(wolfTexture);
+    UnloadTexture(goblinTexture);
+    UnloadTexture(assassinTexture);
 
     UnloadMusicStream(bgmMenu);
     UnloadMusicStream(bgmGameplay);
@@ -119,9 +134,14 @@ Texture2D AssetManager::GetMenuBackground() { return menuBackground; }
 Texture2D AssetManager::GetPlayerTexture() { return playerTexture; }
 Texture2D AssetManager::GetBossTexture() { return bossTexture; }
 
-Texture2D AssetManager::GetEnemy1Texture() { return enemy1Texture; }
-Texture2D AssetManager::GetEnemy2Texture() { return enemy2Texture; }
-Texture2D AssetManager::GetEnemy3Texture() { return enemy3Texture; }
+Texture2D AssetManager::GetBatTexture() { return batTexture; }
+Texture2D AssetManager::GetWolfTexture() { return wolfTexture; }
+Texture2D AssetManager::GetGoblinTexture() { return goblinTexture; }
+Texture2D AssetManager::GetAssassinTexture() { return assassinTexture; }
+
+Texture2D AssetManager::GetOpenDoorTexture() { return openDoorTexture; };
+Texture2D AssetManager::GetCloseDoorTexture() { return closeDoorTexture; };
+
 
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
 Texture2D AssetManager::GetBuffItemTexture() { return buffItemTexture; }
