@@ -46,11 +46,9 @@ public:
     ~PlayerManager();
 
     void InitPlayer();
-    void HandleInput();
     // 僅處理攻擊輸入（不改變視窗或玩家位置）
     void ProcessCombatInput();
     // 更新攻擊相關（劍、子彈）計時與位置
     void UpdateCombat(float dt);
-    void UpdatePlayerAndWindow(float dt);
     void DrawPlayer();
 };

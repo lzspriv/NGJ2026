@@ -34,27 +34,7 @@ void PlayerManager::InitPlayer() {
     currentWinPos = { 500.0f, 300.0f };
 }
 
-void PlayerManager::HandleInput() {
-    currentWinPos = GetWindowPosition();
-    int monitor = GetCurrentMonitor();
-    int maxWidth = GetMonitorWidth(monitor);
-    int maxHeight = GetMonitorHeight(monitor);
 
-    // --- WASD + 方向鍵移動 ---
-    if ((IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) && playerPos.x <= maxWidth - currentWinPos.x - 25) {
-        playerPos.x += playerSpeed;
-    }
-    if ((IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) && playerPos.x >= 5) {
-        playerPos.x -= playerSpeed;
-    }
-    if ((IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) && playerPos.y <= maxHeight - currentWinPos.y - 25) {
-        playerPos.y += playerSpeed;
-    }
-    if ((IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) && playerPos.y >= 5) {
-        playerPos.y -= playerSpeed;
-    }
-
-    }
 
     void PlayerManager::ProcessCombatInput() {
         // 攻擊模式切換
@@ -100,78 +80,7 @@ void PlayerManager::HandleInput() {
         }
     }
 
-void PlayerManager::UpdatePlayerAndWindow(float dt) {
-    currentWinPos = GetWindowPosition();
-    int monitor = GetCurrentMonitor();
-    int maxWidth = GetMonitorWidth(monitor);
-    int maxHeight = GetMonitorHeight(monitor);
 
-    // --- 核心四向視窗推動邏輯 ---
-    if (playerPos.x >= currentWinWidth - 20 && playerPos.x <= maxWidth - currentWinPos.x - 20) {
-        currentWinWidth += 10;
-        SetWindowSize(currentWinWidth, currentWinHeight);
-    }
-    if (playerPos.y >= currentWinHeight - 20 && playerPos.y <= maxHeight - currentWinPos.y - 20) {
-        currentWinHeight += 10;
-        SetWindowSize(currentWinWidth, currentWinHeight);
-    }
-    if (playerPos.x <= 0 && currentWinPos.x > 0) {
-        currentWinWidth += 10;
-        SetWindowPosition(currentWinPos.x - 10, currentWinPos.y);
-        SetWindowSize(currentWinWidth, currentWinHeight);
-        playerPos.x += 10;
-    }
-    if (playerPos.y <= 0 && currentWinPos.y > 40) {
-        currentWinHeight += 10;
-        SetWindowPosition(currentWinPos.x, currentWinPos.y - 10);
-        SetWindowSize(currentWinWidth, currentWinHeight);
-        playerPos.y += 10;
-    }
-
-    // --- 核心功能：更新動態揮劍的旋轉角度 ---
-    if (sword.active) {
-        sword.center = { playerPos.x + 10.0f, playerPos.y + 10.0f };
-        sword.activeTimer -= dt;
-
-        if (sword.activeTimer <= 0.0f) {
-            sword.active = false;
-        }
-        else {
-            // 計算揮劍的進度比率 (從 0.0 到 1.0)
-            // 剛點擊時 activeTimer 等於 duration，比率為 0；快結束時 activeTimer 接近 0，比率為 1
-            float progress = (sword.duration - sword.activeTimer) / sword.duration;
-
-            // 讓目前的角度根據進度在起點與終點之間進行線性插值 (Lerp)
-            sword.currentAngle = sword.startAngle + (sword.endAngle - sword.startAngle) * progress;
-        }
-    }
-
-    if (sword.cooldownTimer > 0.0f) {
-        sword.cooldownTimer -= dt;
-    }
-
-    // --- 更新子彈位置與邊界回收 (window-local) ---
-    for (size_t i = 0; i < bullets.size(); i++) {
-        if (bullets[i].active) {
-            bullets[i].pos.x += bullets[i].speed.x;
-            bullets[i].pos.y += bullets[i].speed.y;
-
-            if (bullets[i].pos.x < 0 || bullets[i].pos.x > currentWinWidth ||
-                bullets[i].pos.y < 0 || bullets[i].pos.y > currentWinHeight) {
-                bullets[i].active = false;
-            }
-        }
-    }
-
-    for (auto it = bullets.begin(); it != bullets.end();) {
-        if (!it->active) {
-            it = bullets.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-}
 
 void PlayerManager::UpdateCombat(float dt) {
     // 更新揮劍狀態

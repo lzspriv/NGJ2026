@@ -1,5 +1,5 @@
 #include "Map.h"
-#include <math.h>
+#include <cmath>
 #include <cstdlib>
 #include <ctime>
 
