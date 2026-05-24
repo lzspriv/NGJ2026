@@ -360,15 +360,25 @@ int main() {
 			monTop = 0;
 		}
 
-		// 依目前血量調整視野範圍：血量越高，視窗越大
+		// ==========================================
+		// 調整視野範圍：不再只看比例，而是看真實血量對應的規模
+		// ==========================================
 		const int minVisionSize = 280;
-		const int maxVisionSize = 560;
-		float hpRatio = (player.maxHp > 0) ? ((float)player.currentHp / (float)player.maxHp) : 0.0f;
-		hpRatio = std::clamp(hpRatio, 0.0f, 1.0f);
-		int targetVisionSize = (int)(minVisionSize + (maxVisionSize - minVisionSize) * hpRatio);
+		// 設定一個基礎擴張係數，讓視窗大小隨 maxHp 成長而動態上限提高
+		// 當 maxHp 越高，視窗極限越大
+		int maxVisionSize = 560 + (player.maxHp - 100);
+
+		// 將當前血量與最大血量同時納入考量
+		// 這裡給予 maxHp 較高的權重，讓升級更有感
+		float expansionFactor = (player.currentHp + (player.maxHp * 0.5f)) / (player.maxHp * 1.5f);
+		expansionFactor = std::clamp(expansionFactor, 0.0f, 1.0f);
+
+		int targetVisionSize = (int)(minVisionSize + (maxVisionSize - minVisionSize) * expansionFactor);
 		targetVisionSize = std::clamp(targetVisionSize, minVisionSize, maxVisionSize);
+
 		int targetWidth = std::min(targetVisionSize, maxWidth);
 		int targetHeight = std::min(targetVisionSize, maxHeight);
+
 		if (targetWidth != currentWidth || targetHeight != currentHeight) {
 			currentWidth = targetWidth;
 			currentHeight = targetHeight;
