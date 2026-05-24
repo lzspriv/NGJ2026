@@ -83,6 +83,9 @@ void AssetManager::LoadAllAssets() {
 
     bonusDoorTexture = LoadTexture("assets/Door_Bonus.png");
 
+    floorTexture = LoadTexture("assets/floor.png");
+    wallTexture = LoadTexture("assets/wall.png");
+
     // 載入聲音串流
     bgmMenu = LoadMusicStream("assets/bgm_menu.mp3");
     bgmGameplay = LoadMusicStream("assets/bgm_gameplay.mp3");

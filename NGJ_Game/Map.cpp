@@ -131,16 +131,18 @@ void Map::Update(Vector2 playerMapPos) {
 void Map::DrawBaseMap() {
 	for (int y = 0; y < mapRows; y++) {
 		for (int x = 0; x < mapCols; x++) {
+			// 計算目前格子的繪製座標
+			int drawX = x * tileWidth;
+			int drawY = y * tileHeight;
+
 			if (grid[y][x] == 0) {
-				// 【空地/地板】：極深的灰藍色
-				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 20, 24, 30, 255 });
-				// 加上極暗的網格線，視覺上會有一種科技地磚的感覺
-				DrawRectangleLines(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 30, 35, 45, 255 });
+				// 畫出地板貼圖
+				// 使用 AssetManager 提供的貼圖，確保美術給的是 50x50 像素
+				DrawTexture(AssetManager::GetFloorTexture(), drawX, drawY, WHITE);
 			}
 			else {
-				// 【牆壁】：幾乎全黑的底色，配上稍微亮一點的邊框凸顯立體感
-				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 5, 8, 12, 255 });
-				DrawRectangleLines(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 40, 50, 70, 255 });
+				// 畫出牆壁貼圖
+				DrawTexture(AssetManager::GetWallTexture(), drawX, drawY, WHITE);
 			}
 		}
 	}

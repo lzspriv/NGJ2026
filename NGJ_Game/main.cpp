@@ -9,6 +9,30 @@
 #include <cstdlib>
 #include <algorithm>
 
+enum class GameState { Menu, Playing, Boss };
+GameState currentGameState = GameState::Menu;
+GameState lastGameState = GameState::Menu;
+
+void UpdateMusicState(GameState newState) {
+	if (newState == lastGameState) return; // 沒有切換場景，直接返回
+
+	// 停止目前的音樂
+	StopMusicStream(AssetManager::GetBgmMenu());
+	StopMusicStream(AssetManager::GetBgmGameplay());
+	StopMusicStream(AssetManager::GetBgmBoss());
+
+	// 根據新場景播放對應音樂
+	switch (newState) {
+	case GameState::Menu:     PlayMusicStream(AssetManager::GetBgmMenu());     break;
+	case GameState::Playing:  PlayMusicStream(AssetManager::GetBgmGameplay()); break;
+	case GameState::Boss:     PlayMusicStream(AssetManager::GetBgmBoss());     break;
+	}
+
+	lastGameState = newState;
+}
+
+
+
 int main() {
 	// 使用 Player 的視窗初始值以保持先前行為
 	int currentWidth = 400;
@@ -17,7 +41,15 @@ int main() {
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - Integration: Map + Player");
 	SetExitKey(0); // 【新增】禁用預設的 ESC 關閉視窗，讓我們能用它來暫停
+	InitAudioDevice();
+
+	AssetManager::SetGameVolume(0.1f);
 	AssetManager::LoadAllAssets();
+	Music music = AssetManager::GetBgmGameplay();
+	PlayMusicStream(music);
+	// 將音樂設為循環
+	music.looping = true;
+
 	SetTargetFPS(60);
 
 	// 追蹤前一個所在的顯示器索引
@@ -223,6 +255,18 @@ int main() {
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
 
+		if (isGameStarted && !dungeonMap.IsBossLevel()) currentGameState = GameState::Playing;
+		else if (dungeonMap.IsBossLevel())				currentGameState = GameState::Boss;
+		else											currentGameState = GameState::Menu;
+
+		// 2. 更新音樂
+		UpdateMusicState(currentGameState);
+
+		// 3. 更新音樂串流 (Raylib 必須)
+		UpdateMusicStream(AssetManager::GetBgmMenu());
+		UpdateMusicStream(AssetManager::GetBgmGameplay());
+		UpdateMusicStream(AssetManager::GetBgmBoss());
+
 		// 1. 選單與暫停狀態控制
 		if (!isGameStarted) {
 			if (IsKeyPressed(KEY_ENTER)) isGameStarted = true;
@@ -251,6 +295,7 @@ int main() {
 		}
 		if (isGameOver) {
 			if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)) break; // 按 ESC 或 Q 關閉遊戲
+			
 			BeginDrawing();
 			ClearBackground(BLACK);
 			if (dungeonMap.IsBossLevel()) {
@@ -1185,6 +1230,7 @@ int main() {
 
 			// Draw player at window-local for UI
 			player.playerPos = playerPos;
+
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
 			if (inChestRoom) {
 				DrawText("REWARD ROOM", 12, currentHeight - 22, 14, GOLD);

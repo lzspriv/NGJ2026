@@ -1,5 +1,6 @@
 #include "Player.h"
 #include <cmath> // 用於 sqrtf, atan2f, PI 運算
+#include "AssetManager.h"
 
 PlayerManager::PlayerManager() {
     InitPlayer();
@@ -58,6 +59,7 @@ void PlayerManager::InitPlayer() {
 
                 if (currentMode == MODE_SHOOT) {
                     Bullet newBullet;
+                    PlaySound(AssetManager::GetSoundShoot());
                     newBullet.pos = playerCenter; // spawn from player's center
                     newBullet.speed = { dir.x * 8.0f, dir.y * 8.0f };
                     newBullet.active = true;
@@ -67,6 +69,7 @@ void PlayerManager::InitPlayer() {
                     sword.active = true;
                     sword.activeTimer = sword.duration;
                     sword.cooldownTimer = 0.4f;
+                    PlaySound(AssetManager::GetSoundSlash());
 
                     float targetAngleRad = atan2f(dir.y, dir.x);
                     float targetAngleDeg = targetAngleRad * (180.0f / PI);
