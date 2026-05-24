@@ -39,7 +39,7 @@ int main() {
 	int currentHeight = 400;
 
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
-	InitWindow(currentWidth, currentHeight, "NGJ2026 - Integration: Map + Player");
+	InitWindow(currentWidth, currentHeight, "NGJ2026 - Life Bound");
 	SetExitKey(0); // 【新增】禁用預設的 ESC 關閉視窗，讓我們能用它來暫停
 	InitAudioDevice();
 
@@ -1334,7 +1334,7 @@ int main() {
 			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.6f));
 
 			// 3. 繪製標題與說明文字
-			DrawText("NGJ 2026: ABSOLUTE EXPANSION", currentWidth / 2 - 160, currentHeight / 2 - 80, 20, GREEN);
+			DrawText("NGJ 2026: Life Bound", currentWidth / 2 - 160, currentHeight / 2 - 80, 20, GREEN);
 			DrawText("Press [ENTER] to Initialize System", currentWidth / 2 - 140, currentHeight / 2 - 20, 16, RAYWHITE);
 
 			// 操作說明
