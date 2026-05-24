@@ -409,7 +409,7 @@ int main() {
 			// 找到 if (dungeonMap.GetCurrentLevel() != lastLevel) 區塊內的 Boss 生成程式碼
 			if (dungeonMap.GetCurrentLevel() % 5 == 0) {
 				// Boss 關卡生成：召喚 Boss
-				enemies.emplace_back("GIANT BOSS", 100, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
+				enemies.emplace_back("GIANT BOSS", 150, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 				enemies.back().ConfigureBossPhaseOne();
 				enemies.back().SetPosition(NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 				dungeonMap.ClearBossObstacles();
@@ -461,6 +461,9 @@ int main() {
 			if (playerPos.y < roomMinY) playerPos.y = roomMinY;
 			if (playerPos.x > roomMaxX - 25) playerPos.x = roomMaxX - 25;
 			if (playerPos.y > roomMaxY - 25) playerPos.y = roomMaxY - 25;
+			for (auto& enemy : chestRoomEnemies) {
+				enemy.Update(dt, { playerPos.x, playerPos.y }, &dungeonMap, nullptr, nullptr);
+			}
 		}
 
 		// 保留地圖牆壁碰撞的移動邏輯（以鍵盤控制）
@@ -1221,6 +1224,7 @@ int main() {
 				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
 				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
 			}
+			
 			// 顯示玩家的 world->screen
 			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
 			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
