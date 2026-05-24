@@ -125,6 +125,32 @@ int main() {
 		}
 	};
 
+	auto spawnRandomMinion = [&](int count) {
+		for (int i = 0; i < count; i++) {
+			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
+			int t = std::rand() % typeCount;
+			switch (t) {
+			case 0:
+				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+				break;
+			case 1:
+				enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+				enemies.back().SetRangedAttack(true, 260.0f, 0.7f);
+				break;
+			case 2:
+				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+				break;
+			case 3:
+				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+				enemies.back().SetRangedAttack(true, 330.0f, 0.45f);
+				break;
+			default:
+				enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+				break;
+			}
+				}
+			};
+
 	// 呼叫 spawnRandom() 讓怪物誕生在隨機角落
 	enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 	enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
@@ -176,6 +202,10 @@ int main() {
 
 	bool isGameStarted = false; // 控制是否在主選單
 	bool isPaused = false;      // 控制是否在暫停狀態
+	bool designerMode = false;  // 設計師模式：無敵 + 穿牆
+	bool bossBarragePrepared = false;
+	bool bossSummonResolved = false;
+	bool bossObstacleSpawned = false;
 
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
@@ -185,27 +215,39 @@ int main() {
 			if (IsKeyPressed(KEY_ENTER)) isGameStarted = true;
 		}
 		else if (!isGameOver) {
-			// 按 ESC 或 P 鍵可以切換暫停
-			if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+			// ESC 暫停/解除暫停，P 切換設計師模式
+			if (IsKeyPressed(KEY_ESCAPE)) {
 				isPaused = !isPaused;
+			}
+			if (IsKeyPressed(KEY_P)) {
+				designerMode = !designerMode;
+				if (designerMode) {
+					isPaused = false;
+				}
 			}
 		}
 
 		// 2. 終極時間停止器：將未開始與暫停加入全局凍結判定
 		bool isUiPause = showRewardUI || showChestEntryPrompt || isPaused || !isGameStarted;
-		if (!isGameOver && !isUiPause && playerInvincibleTimer > 0.0f) {
+		if (!isGameOver && !isUiPause && playerInvincibleTimer > 0.0f && !designerMode) {
 			playerInvincibleTimer -= dt;
 			if (playerInvincibleTimer < 0.0f) playerInvincibleTimer = 0.0f;
 		}
-		if (player.currentHp <= 0) {
+		if (player.currentHp <= 0 && !designerMode) {
 			isGameOver = true;
 		}
 		if (isGameOver) {
 			if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)) break; // 按 ESC 或 Q 關閉遊戲
 			BeginDrawing();
 			ClearBackground(BLACK);
-			DrawText("SYSTEM CONNECTION LOST - GAME OVER", currentWidth / 2 - 180, currentHeight / 2 - 20, 20, RED);
-			DrawText("Press [ESC] or [Q] to quit", currentWidth / 2 - 120, currentHeight / 2 + 30, 16, WHITE);
+			if (dungeonMap.IsBossLevel()) {
+				DrawText("BOSS DEFEATED - SYSTEM CLEAR", currentWidth / 2 - 170, currentHeight / 2 - 20, 20, GOLD);
+				DrawText("Press [ESC] or [Q] to quit", currentWidth / 2 - 120, currentHeight / 2 + 30, 16, WHITE);
+			}
+			else {
+				DrawText("SYSTEM CONNECTION LOST - GAME OVER", currentWidth / 2 - 180, currentHeight / 2 - 20, 20, RED);
+				DrawText("Press [ESC] or [Q] to quit", currentWidth / 2 - 120, currentHeight / 2 + 30, 16, WHITE);
+			}
 			EndDrawing();
 			continue;
 		}
@@ -306,16 +348,11 @@ int main() {
 			enemies.clear();
 
 			if (dungeonMap.IsBossLevel()) {
-				// 【終極大 Boss 降臨】：每 5 關出現，血量與攻擊力隨層數飆升！
-				int bossHp = 200 + (dungeonMap.GetCurrentLevel() * 40);
-				int bossDmg = 10 + dungeonMap.GetCurrentLevel();
-				enemies.emplace_back("GIANT BOSS", bossHp, bossDmg, 5, 55.0f, 600.0f, 30.0f, 0.8f, spawnRandom());
-				enemies.back().SetRangedAttack(true, 400.0f, 0.5f); // 瘋狂射擊
-
-				// 帶幾個護衛
-				for (int i = 0; i < 3; i++) {
-					enemies.emplace_back("Assassin", 7, 6, 0, 25.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
-				}
+				// 第一階段 Boss：固定數值與技能
+				enemies.emplace_back("GIANT BOSS", 100, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monLeft + monW / 2), (float)(monTop + monH / 2)));
+				enemies.back().ConfigureBossPhaseOne();
+				enemies.back().SetPosition(NGJ::Vec2((float)(monLeft + monW / 2), (float)(monTop + monH / 2)));
+				dungeonMap.ClearBossObstacles();
 			}
 			else {
 				// 普通關卡怪
@@ -379,17 +416,16 @@ int main() {
 						targetPlayerX = centerX;
 					}
 					else {
-						float maxPlayerX = (float)(currentWidth - 25);
 						targetPlayerX += playerSpeed;
-						if (targetPlayerX > maxPlayerX) targetPlayerX = maxPlayerX;
+						if (targetPlayerX > (float)(currentWidth - 25)) targetPlayerX = (float)(currentWidth - 25);
 					}
 				}
 
 				float potentialMapX = (targetWinX + targetPlayerX) - monLeft;
 				float currentMapY = (winPos.y + playerPos.y) - monTop;
 
-				if (!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY) &&
-					!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY)) {
+				if (designerMode || (!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY) &&
+					!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY))) {
 					playerPos.x = targetPlayerX;
 					if ((int)winPos.x != targetWinX) {
 						SetWindowPosition(targetWinX, (int)winPos.y);
@@ -424,8 +460,8 @@ int main() {
 				float potentialMapX = (targetWinX + targetPlayerX) - monLeft;
 				float currentMapY = (winPos.y + playerPos.y) - monTop;
 
-				if (!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY) &&
-					!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY)) {
+				if (designerMode || (!dungeonMap.IsWall(potentialMapX - playerRadius, currentMapY) &&
+					!dungeonMap.IsWall(potentialMapX + playerRadius, currentMapY))) {
 					playerPos.x = targetPlayerX;
 					if ((int)winPos.x != targetWinX) {
 						SetWindowPosition(targetWinX, (int)winPos.y);
@@ -452,17 +488,16 @@ int main() {
 						targetPlayerY = centerY;
 					}
 					else {
-						float maxPlayerY = (float)(currentHeight - 25);
 						targetPlayerY += playerSpeed;
-						if (targetPlayerY > maxPlayerY) targetPlayerY = maxPlayerY;
+						if (targetPlayerY > (float)(currentHeight - 25)) targetPlayerY = (float)(currentHeight - 25);
 					}
 				}
 
 				float currentMapX = (winPos.x + playerPos.x) - monLeft;
 				float potentialMapY = (targetWinY + targetPlayerY) - monTop;
 
-				if (!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius) &&
-					!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius)) {
+				if (designerMode || (!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius) &&
+					!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius))) {
 					playerPos.y = targetPlayerY;
 					if ((int)winPos.y != targetWinY) {
 						SetWindowPosition((int)winPos.x, targetWinY);
@@ -486,7 +521,7 @@ int main() {
 					if (availableUp > 0) {
 						int delta = (availableUp >= (int)playerSpeed) ? (int)playerSpeed : availableUp;
 						targetWinY -= delta;
-						targetPlayerY = centerY;
+						targetPlayerY = centerX;
 					}
 					else {
 						targetPlayerY -= playerSpeed;
@@ -497,8 +532,8 @@ int main() {
 				float currentMapX = (winPos.x + playerPos.x) - monLeft;
 				float potentialMapY = (targetWinY + targetPlayerY) - monTop;
 
-				if (!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius) &&
-					!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius)) {
+				if (designerMode || (!dungeonMap.IsWall(currentMapX, potentialMapY - playerRadius) &&
+					!dungeonMap.IsWall(currentMapX, potentialMapY + playerRadius))) {
 					playerPos.y = targetPlayerY;
 					if ((int)winPos.y != targetWinY) {
 						SetWindowPosition((int)winPos.x, targetWinY);
@@ -662,6 +697,15 @@ int main() {
 		NGJ::Vec2 viewMin((float)(winPos.x - monLeft), (float)(winPos.y - monTop));
 		NGJ::Vec2 viewMax(viewMin.x + (float)player.currentWinWidth, viewMin.y + (float)player.currentWinHeight);
 		auto& activeEnemies = inChestRoom ? chestRoomEnemies : enemies;
+		NGJ::Enemy* bossEnemy = nullptr;
+		if (!inChestRoom) {
+			for (auto& e : activeEnemies) {
+				if (e.IsBoss()) {
+					bossEnemy = &e;
+					break;
+				}
+			}
+		}
 		if (!isUiPause) {
 			for (auto& e : activeEnemies) {
 				Map* combatMap = inChestRoom ? nullptr : &dungeonMap;
@@ -674,6 +718,39 @@ int main() {
 					if (p.y > (float)currentHeight - 34.0f) p.y = (float)currentHeight - 34.0f;
 					e.SetPosition(p);
 				}
+			}
+		}
+
+		if (bossEnemy && !isUiPause && !bossSummonResolved && bossEnemy->GetCurrentHP() <= 75) {
+			bossEnemy->TriggerBossSummon();
+			bossEnemy->TriggerBossIdleLock(1.5f);
+			spawnRandomMinion(3);
+			swordHitThisSwing.assign(enemies.size(), false);
+			bossSummonResolved = true;
+		}
+
+		if (bossEnemy && !isUiPause) {
+			static float bossEventTimer = 0.0f;
+			if (!bossEnemy->IsBossBulletBarrageActive() && !bossEnemy->IsBossIdleLockActive()) {
+				bossEventTimer += dt;
+				if (bossEventTimer >= 20.0f) {
+					bossEventTimer = 0.0f;
+					if ((std::rand() % 100) < 50) {
+						bossEnemy->TriggerBossBarrage();
+						dungeonMap.SpawnBossObstacles(4);
+						bossObstacleSpawned = true;
+						bossBarragePrepared = true;
+					}
+				}
+			}
+			if (bossBarragePrepared && !bossEnemy->IsBossBulletBarrageActive() && !bossEnemy->IsBossIdleLockActive()) {
+				dungeonMap.ClearBossObstacles();
+				bossObstacleSpawned = false;
+				bossBarragePrepared = false;
+			}
+
+			if (dungeonMap.IsBossLevel() && bossEnemy->GetIsDead()) {
+				isGameOver = true;
 			}
 		}
 
@@ -726,7 +803,7 @@ int main() {
 
 			Vector2 enemyPos = { e.GetPosition().x, e.GetPosition().y };
 
-			if (playerInvincibleTimer <= 0.0f) {
+			if (!designerMode && playerInvincibleTimer <= 0.0f) {
 				float pdx = playerMapPos.x - enemyPos.x;
 				float pdy = playerMapPos.y - enemyPos.y;
 				float playerEnemyDist = sqrtf(pdx * pdx + pdy * pdy);
@@ -797,7 +874,7 @@ int main() {
 
 			if (e.GetIsDead()) continue;
 
-			if (playerInvincibleTimer <= 0.0f) {
+			if (!designerMode && playerInvincibleTimer <= 0.0f) {
 				for (auto& eb : e.GetBulletsMutable()) {
 					if (!eb.active) continue;
 					float pdx = playerMapPos.x - eb.position.x;

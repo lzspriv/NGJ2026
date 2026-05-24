@@ -23,9 +23,17 @@ private:
     int keysCollected;                      // 已收集的鑰匙總數
     Vector2 doorPos;
     bool doorUnlocked;                      // 當所有 3 把鑰匙都收集時為 true
+    bool bossExitDoorActive;                // Boss 擊敗後出現的出口門
 
     std::vector<Vector2> chestPositions;    // 儲存寶箱位置
     std::vector<bool> chestOpened;          // 追蹤寶箱是否已打開
+
+    // ---- Boss 階段臨時障礙物 ----
+    struct BossObstacle {
+        Rectangle rect;
+        bool active;
+    };
+    std::vector<BossObstacle> bossObstacles;
 
     // ---- 內部演算法 ----
     bool IsMapConnected();                  // 驗證隨機迷宮連通性
@@ -53,7 +61,7 @@ public:
 
     // ---- 升級版無限關卡系統介面 ----
     int GetCurrentLevel() const { return currentLevel; }
-    bool IsBossLevel() const { return currentLevel % 5 == 0; } // 每 5 關一個大 Boss
+    bool IsBossLevel() const { return currentLevel == 5; } // 只在第五層出現 Boss
 
     // ---- 動態地圖生成核心 ----
     void InitLevel(int level);
@@ -64,6 +72,15 @@ public:
     const std::vector<bool>& GetChestOpened() const { return chestOpened; }
     int GetChestCount() const { return chestPositions.size(); }
     void OpenChest(int chestIndex) { if (chestIndex >= 0 && chestIndex < (int)chestOpened.size()) chestOpened[chestIndex] = true; }
+
+    // ---- Boss 階段障礙物控制 ----
+    void ClearBossObstacles();
+    void SpawnBossObstacles(int count);
+    bool IsBossObstacleAt(float worldX, float worldY) const;
+    const std::vector<BossObstacle>& GetBossObstacles() const { return bossObstacles; }
+
+    void ActivateBossExitDoor();
+    bool IsBossExitDoorActive() const { return bossExitDoorActive; }
 
     Vector2 GetPlayerStartPos() const { return playerStartPos; }
     bool IsWall(float worldX, float worldY) const;

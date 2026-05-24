@@ -67,6 +67,23 @@ NGJ::Enemy::Enemy(const std::string& name_,
 	isDashing(false),
 	dashSpeed(460.0f),
 	dashTarget(startPos),
+	isBoss(false),
+	bossSummonTriggered(false),
+	bossPhaseTimer(0.0f),
+	bossAttackCycleTimer(0.0f),
+	bossBulletBarrageTimer(0.0f),
+	bossIdleLockTimer(0.0f),
+	bossBulletDamage(7),
+	bossMeleeDamage(10),
+	bossBarrageWaveCount(4),
+	bossBarrageWaveIndex(0),
+	bossBarrageWaveTimer(0.0f),
+	bossBulletBarrageActive(false),
+	bossSummonPending(false),
+	bossAtCenter(false),
+	bossBulletSpeed(140.0f),
+	bossBulletCooldown(0.35f),
+	bossBulletAngleOffset(0.0f),
 	assassinTeleportTimer(3.0f)
 {
 	SeedRandOnce();
@@ -78,6 +95,12 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* m
 	const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
 	if (isDead) {
 		state = EnemyState::Dead;
+		return;
+	}
+
+	if (isBoss) {
+		UpdateBoss(deltaTime, playerPosition, map, viewMin, viewMax);
+		UpdateBullets(deltaTime, map);
 		return;
 	}
 
@@ -137,6 +160,7 @@ void NGJ::Enemy::TakeDamage(int damage) {
 int NGJ::Enemy::Attack() {
 	if (!CanAttack() || isDead) return 0;
 	attackTimer = attackCooldown;
+	if (isBoss) return bossMeleeDamage;
 	return attackPower;
 }
 
@@ -162,6 +186,140 @@ void NGJ::Enemy::SetRangedAttack(bool enabled, float bulletSpeedValue, float bul
 bool NGJ::Enemy::IsRangedAttackEnabled() const { return canShoot; }
 const std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBullets() const { return bullets; }
 std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBulletsMutable() { return bullets; }
+
+void NGJ::Enemy::ConfigureBossPhaseOne() {
+	isBoss = true;
+	maxHP = 100;
+	currentHP = 100;
+	defense = 1;
+	attackPower = bossMeleeDamage;
+	canShoot = true;
+	bulletSpeed = bossBulletSpeed;
+	bulletCooldown = bossBulletCooldown;
+	attackRange = 36.0f;
+	detectionRange = 9999.0f;
+	moveSpeed = 60.0f;
+	bossPhaseTimer = 0.0f;
+	bossAttackCycleTimer = 0.0f;
+	bossBulletBarrageTimer = 0.0f;
+	bossIdleLockTimer = 0.0f;
+	bossSummonTriggered = false;
+	bossBulletBarrageActive = false;
+	bossSummonPending = false;
+	bossAtCenter = false;
+	bossBarrageWaveIndex = 0;
+	bossBarrageWaveTimer = 0.0f;
+	ClearBossBullets();
+}
+
+void NGJ::Enemy::TriggerBossBarrage() {
+	bossBulletBarrageActive = true;
+	bossBulletBarrageTimer = 0.0f;
+	bossBarrageWaveIndex = 0;
+	bossBarrageWaveTimer = 0.0f;
+	bossAtCenter = true;
+	state = NGJ::EnemyState::Idle;
+}
+
+void NGJ::Enemy::TriggerBossSummon() {
+	bossSummonPending = true;
+}
+
+void NGJ::Enemy::TriggerBossIdleLock(float seconds) {
+	bossIdleLockTimer = seconds;
+	state = NGJ::EnemyState::Idle;
+}
+
+void NGJ::Enemy::ClearBossBullets() {
+	bullets.clear();
+}
+
+void NGJ::Enemy::SpawnBossBullets360() {
+	const int bulletCount = 24;
+	const float step = 360.0f / (float)bulletCount;
+	for (int i = 0; i < bulletCount; ++i) {
+		float angleDeg = bossBulletAngleOffset + step * (float)i;
+		float angleRad = angleDeg * 3.1415926535f / 180.0f;
+		EnemyBullet b;
+		b.position = position;
+		b.velocity = Vec2(std::cos(angleRad) * bossBulletSpeed, std::sin(angleRad) * bossBulletSpeed);
+		b.active = true;
+		bullets.push_back(b);
+	}
+}
+
+void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Map* map, const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
+	bossPhaseTimer += deltaTime;
+	if (bossIdleLockTimer > 0.0f) {
+		bossIdleLockTimer -= deltaTime;
+		if (bossIdleLockTimer < 0.0f) bossIdleLockTimer = 0.0f;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (bossSummonPending) {
+		bossSummonPending = false;
+		bossSummonTriggered = true;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (!bossSummonTriggered && currentHP <= (maxHP * 3) / 4) {
+		bossSummonTriggered = true;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (!bossBulletBarrageActive) {
+		bossAttackCycleTimer += deltaTime;
+		if (bossAttackCycleTimer >= 20.0f) {
+			bossAttackCycleTimer = 0.0f;
+			if ((std::rand() % 100) < 60) {
+				if (viewMin && viewMax) {
+					position.x = (viewMin->x + viewMax->x) * 0.5f;
+					position.y = (viewMin->y + viewMax->y) * 0.5f;
+				}
+				TriggerBossBarrage();
+			}
+		}
+	}
+
+	if (bossBulletBarrageActive) {
+		bossBulletBarrageTimer += deltaTime;
+		bossBarrageWaveTimer += deltaTime;
+		if (bossBarrageWaveIndex < bossBarrageWaveCount && bossBarrageWaveTimer >= 0.45f) {
+			bossBarrageWaveTimer = 0.0f;
+			SpawnBossBullets360();
+			bossBarrageWaveIndex++;
+		}
+		if (bossBarrageWaveIndex >= bossBarrageWaveCount) {
+			bossBulletBarrageActive = false;
+			ClearBossBullets();
+			TriggerBossIdleLock(5.0f);
+		}
+		return;
+	}
+
+	if (bossSummonTriggered && currentHP <= (maxHP * 3) / 4) {
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	float distToPlayer = NGJ::Vec2::Distance(position, playerPosition);
+	if (distToPlayer <= attackRange) {
+		state = NGJ::EnemyState::Attack;
+		if (CanAttack()) {
+			attackTimer = attackCooldown;
+		}
+	}
+	else if (!bossAtCenter) {
+		state = NGJ::EnemyState::Chase;
+		MoveTowards(playerPosition, deltaTime, map);
+	}
+	else {
+		state = NGJ::EnemyState::Idle;
+	}
+}
 
 void NGJ::Enemy::UpdateState(const NGJ::Vec2& playerPosition, Map* map) {
 	if (isDead) { state = NGJ::EnemyState::Dead; return; }
@@ -311,6 +469,19 @@ void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, M
 }
 
 void NGJ::Enemy::UpdateAttack(float /*deltaTime*/, const NGJ::Vec2& playerPosition) {
+	if (isBoss) {
+		if (!canShoot || bulletTimer > 0.0f) return;
+		NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+		if (std::abs(dir.x) <= 1e-6f && std::abs(dir.y) <= 1e-6f) return;
+		EnemyBullet b;
+		b.position = position;
+		b.velocity = dir.Mul(bulletSpeed);
+		b.active = true;
+		bullets.push_back(b);
+		bulletTimer = bulletCooldown;
+		return;
+	}
+
 	if (!canShoot || bulletTimer > 0.0f) return;
 
 	NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
@@ -329,7 +500,7 @@ void NGJ::Enemy::UpdateBullets(float deltaTime, Map* map) {
 		if (!b.active) continue;
 		b.position = b.position.Add(b.velocity.Mul(deltaTime));
 
-		if (map && map->IsWall(b.position.x, b.position.y)) {
+		if (map && (map->IsWall(b.position.x, b.position.y) || map->IsBossObstacleAt(b.position.x, b.position.y))) {
 			b.active = false;
 		}
 	}

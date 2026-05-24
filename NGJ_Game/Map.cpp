@@ -23,6 +23,7 @@ void Map::InitLevel(int level) {
 	currentLevel = level;
 	keysCollected = 0;
 	doorUnlocked = false;
+	bossExitDoorActive = false;
 
 	// 1. 地圖大小嚴格綁定為螢幕大小，不再無限擴張！
 	mapCols = monitorW / tileWidth;
@@ -81,18 +82,20 @@ void Map::InitLevel(int level) {
 		}
 	}
 
-	// 4. 放置物件 【關鍵修復】：傳入 margin = 2，強制所有物件離螢幕邊界至少 2 格(100像素)遠！
-	for (int i = 0; i < 3; i++) {
-		keyPositions.push_back(GetRandomFreePosition(2));
-		keyCollected.push_back(false);
-	}
+	// 4. 放置物件：Boss 第五層不生成鑰匙、門與寶箱
+	if (!IsBossLevel()) {
+		for (int i = 0; i < 3; i++) {
+			keyPositions.push_back(GetRandomFreePosition(2));
+			keyCollected.push_back(false);
+		}
 
-	chestPositions.push_back(GetRandomFreePosition(2));
-	chestOpened.push_back(false);
+		chestPositions.push_back(GetRandomFreePosition(2));
+		chestOpened.push_back(false);
 
-	doorPos = GetRandomFreePosition(2);
-	while (sqrtf(powf(doorPos.x - playerStartPos.x, 2) + powf(doorPos.y - playerStartPos.y, 2)) < (mapCols * tileWidth * 0.3f)) {
 		doorPos = GetRandomFreePosition(2);
+		while (sqrtf(powf(doorPos.x - playerStartPos.x, 2) + powf(doorPos.y - playerStartPos.y, 2)) < (mapCols * tileWidth * 0.3f)) {
+			doorPos = GetRandomFreePosition(2);
+		}
 	}
 }
 
@@ -135,25 +138,40 @@ void Map::DrawBaseMap() {
 }
 
 void Map::DrawObjects() {
-	// Draw keys
-	for (size_t i = 0; i < keyPositions.size(); i++) {
-		if (!keyCollected[i]) {
-			DrawCircleV(keyPositions[i], 8.0f, YELLOW);
+	if (!IsBossLevel()) {
+		// Draw keys
+		for (size_t i = 0; i < keyPositions.size(); i++) {
+			if (!keyCollected[i]) {
+				DrawCircleV(keyPositions[i], 8.0f, YELLOW);
+			}
 		}
+
+		// Draw chest
+		for (size_t i = 0; i < chestPositions.size(); i++) {
+			if (!chestOpened[i]) {
+				Rectangle chestRect = { chestPositions[i].x - 14.0f, chestPositions[i].y - 10.0f, 28.0f, 20.0f };
+				DrawRectangleRec(chestRect, GOLD);
+				DrawRectangleLines((int)chestRect.x, (int)chestRect.y, (int)chestRect.width, (int)chestRect.height, BROWN);
+			}
+		}
+
+		// Draw door
+		Color doorColor = doorUnlocked ? Color{ 0, 200, 120, 255 } : MAROON;
+		DrawCircleV(doorPos, 14.0f, doorColor);
 	}
 
-	// Draw chest
-	for (size_t i = 0; i < chestPositions.size(); i++) {
-		if (!chestOpened[i]) {
-			Rectangle chestRect = { chestPositions[i].x - 14.0f, chestPositions[i].y - 10.0f, 28.0f, 20.0f };
-			DrawRectangleRec(chestRect, GOLD);
-			DrawRectangleLines((int)chestRect.x, (int)chestRect.y, (int)chestRect.width, (int)chestRect.height, BROWN);
-		}
+	if (bossExitDoorActive) {
+		Rectangle exitRect = { playerStartPos.x - 18.0f, playerStartPos.y - 26.0f, 36.0f, 52.0f };
+		DrawRectangleRec(exitRect, GREEN);
+		DrawRectangleLines((int)exitRect.x, (int)exitRect.y, (int)exitRect.width, (int)exitRect.height, WHITE);
 	}
 
-	// Draw door
-	Color doorColor = doorUnlocked ? Color{ 0, 200, 120, 255 } : MAROON;
-	DrawCircleV(doorPos, 14.0f, doorColor);
+	// Draw boss obstacles
+	for (const auto& obstacle : bossObstacles) {
+		if (!obstacle.active) continue;
+		DrawRectangleRec(obstacle.rect, DARKGRAY);
+		DrawRectangleLines((int)obstacle.rect.x, (int)obstacle.rect.y, (int)obstacle.rect.width, (int)obstacle.rect.height, BLACK);
+	}
 }
 
 bool Map::IsWall(float worldX, float worldY) const {
@@ -165,6 +183,51 @@ bool Map::IsWall(float worldX, float worldY) const {
 	}
 
 	return grid[tileY][tileX] == 1;
+}
+
+void Map::ClearBossObstacles() {
+	bossObstacles.clear();
+}
+
+void Map::SpawnBossObstacles(int count) {
+	bossObstacles.clear();
+	if (count <= 0) return;
+
+	int usableW = mapCols * tileWidth;
+	int usableH = mapRows * tileHeight;
+	int obstacleW = 60;
+	int obstacleH = 60;
+	int centerX = usableW / 2;
+	int centerY = usableH / 2;
+	int offsetX = 120;
+	int offsetY = 90;
+
+	for (int i = 0; i < count; ++i) {
+		BossObstacle ob{};
+		ob.active = true;
+		switch (i % 4) {
+		case 0: ob.rect = { (float)(centerX - offsetX - obstacleW / 2), (float)(centerY - obstacleH / 2), (float)obstacleW, (float)obstacleH }; break;
+		case 1: ob.rect = { (float)(centerX + offsetX - obstacleW / 2), (float)(centerY - obstacleH / 2), (float)obstacleW, (float)obstacleH }; break;
+		case 2: ob.rect = { (float)(centerX - obstacleW / 2), (float)(centerY - offsetY - obstacleH / 2), (float)obstacleW, (float)obstacleH }; break;
+		default: ob.rect = { (float)(centerX - obstacleW / 2), (float)(centerY + offsetY - obstacleH / 2), (float)obstacleW, (float)obstacleH }; break;
+		}
+		bossObstacles.push_back(ob);
+	}
+}
+
+bool Map::IsBossObstacleAt(float worldX, float worldY) const {
+	for (const auto& obstacle : bossObstacles) {
+		if (!obstacle.active) continue;
+		if (worldX >= obstacle.rect.x && worldX <= obstacle.rect.x + obstacle.rect.width &&
+			worldY >= obstacle.rect.y && worldY <= obstacle.rect.y + obstacle.rect.height) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void Map::ActivateBossExitDoor() {
+	bossExitDoorActive = true;
 }
 
 // 【修改】加入 marginTiles 參數，限制隨機座標不要貼在極限邊緣
