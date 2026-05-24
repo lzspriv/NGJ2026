@@ -14,7 +14,11 @@ float NGJ::Vec2::Distance(const NGJ::Vec2& a, const NGJ::Vec2& b) {
 	float dy = a.y - b.y;
 	return std::sqrt(dx * dx + dy * dy);
 }
-
+namespace NGJ {
+	Vec2 operator-(const Vec2& a, const Vec2& b) {
+		return Vec2(a.x - b.x, a.y - b.y);
+	}
+}
 NGJ::Vec2 NGJ::Vec2::Normalized() const {
 	float len = std::sqrt(x * x + y * y);
 	if (len <= 1e-6f) return NGJ::Vec2(0.0f, 0.0f);
@@ -253,6 +257,7 @@ void NGJ::Enemy::SpawnBossBullets360() {
 
 void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Map* map, const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
 	bossPhaseTimer += deltaTime;
+
 	if (bossIdleLockTimer > 0.0f) {
 		bossIdleLockTimer -= deltaTime;
 		if (bossIdleLockTimer < 0.0f) bossIdleLockTimer = 0.0f;
@@ -289,6 +294,38 @@ void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Ma
 		}
 		return;
 	}
+	// 2. 處理一般狀態下的「主動射擊」
+	// 如果不是彈幕模式，則定期向玩家發射單顆子彈
+	bossBulletBarrageTimer += deltaTime; // 我們可以複用這個計時器或新增一個
+	if (bossBulletBarrageTimer >= 2.0f) { // 設定每 2 秒射擊一次
+		NGJ::Vec2 dir = (playerPosition - position).Normalized();
+
+		// 產生單顆子彈 (需確保該函式存在，若無請參考 SpawnBossBullets360 邏輯簡化)
+		EnemyBullet b;
+		b.position = position;
+		b.velocity = Vec2(dir.x * bossBulletSpeed, dir.y * bossBulletSpeed);
+		b.active = true;
+		bullets.push_back(b);
+
+		bossBulletBarrageTimer = 0.0f;
+	}
+	// 3. 近戰扣血邏輯(修正每幀扣血問題)
+		float dist = NGJ::Vec2::Distance(position, playerPosition);
+	if (dist <= attackRange) {
+		state = NGJ::EnemyState::Attack;
+		// 檢查攻擊冷卻計時器
+		if (attackTimer <= 0.0f) {
+			// 這裡假設我們在 GameManager 或 main.cpp 呼叫此函式時會傳入 player 物件
+			// 請確保您的 UpdateBoss 簽名已包含 Player 指標
+			// 若目前沒有，請在呼叫處透過指標傳入
+			// player->TakeDamage(bossMeleeDamage);
+
+			attackTimer = 1.5f; // 設定近戰冷卻時間為 1.5 秒
+		}
+	}
+
+	// 4. 更新攻擊計時器
+	if (attackTimer > 0.0f) attackTimer -= deltaTime;
 
 	float distToPlayer = NGJ::Vec2::Distance(position, playerPosition);
 	if (distToPlayer <= attackRange) {
