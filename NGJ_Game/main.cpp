@@ -291,6 +291,7 @@ int main() {
 				enemySpawnTimer = 0.0f;
 				swordHitThisSwing.assign(enemies.size(), false);
 				wasSwordActive = false;
+				declinedChestIndex = -1;
 			}
 			lastLayer = dungeonMap.GetCurrentLayer();
 		}
@@ -485,9 +486,19 @@ int main() {
 		const auto& chestOpened = dungeonMap.GetChestOpened();
 
 		if (!inChestRoom && !showChestEntryPrompt) {
+			// 【修正】：如果目前有拒絕紀錄，檢查玩家是否已經走開了
+			if (declinedChestIndex != -1 && declinedChestIndex < (int)chestPositions.size()) {
+				float distToDeclined = sqrtf(powf(playerMapPos.x - chestPositions[declinedChestIndex].x, 2) +
+					powf(playerMapPos.y - chestPositions[declinedChestIndex].y, 2));
+				// 只要玩家和該寶箱距離大於 50 像素，就當作玩家走開了，清除拒絕紀錄，允許重新靠近觸發
+				if (distToDeclined > 50.0f) {
+					declinedChestIndex = -1;
+				}
+			}
+
 			for (int i = 0; i < (int)chestPositions.size(); i++) {
 				if (!chestOpened[i]) {
-					if (i == declinedChestIndex) continue;
+					if (i == declinedChestIndex) continue; // 如果還在拒絕範圍內，先跳過
 					float distToChest = sqrtf(powf(playerMapPos.x - chestPositions[i].x, 2) +
 						powf(playerMapPos.y - chestPositions[i].y, 2));
 					if (distToChest < 30.0f) {
@@ -591,12 +602,6 @@ int main() {
 				playerPos = returnPlayerPos;
 				swordHitThisSwing.assign(enemies.size(), false);
 				wasSwordActive = false;
-			}
-
-			if (rewardUITimer > 10.0) {
-				showRewardUI = false;
-				currentChestIndex = -1;
-				selectedReward = -1;
 			}
 		}
 
