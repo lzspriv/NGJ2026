@@ -1083,7 +1083,28 @@ int main() {
 				}
 
 				// 2. 呼叫動畫繪製函式
-				AssetManager::DrawEntityAnimated(tex, wp, enemyFrames, scale, animSpeed, WHITE);
+
+				// 1. 計算怪物面向：Goblin 與 Wolf 才會旋轉面向玩家
+				float rotationAngle = 0.0f; // 預設值
+				if (e.name == "Goblin" || e.name == "Wolf") {
+					// 只有在追擊或攻擊狀態時，才讓這些怪物看向玩家
+					if (e.GetState() == NGJ::EnemyState::Chase || e.GetState() == NGJ::EnemyState::Attack) {
+						float dirX = playerMapPos.x - wp.x;
+						float dirY = playerMapPos.y - wp.y;
+						rotationAngle = atan2f(dirY, dirX) * (180.0f / 3.14159f);
+					}
+				}
+
+				// 2. 呼叫繪製函式
+				int frameWidth = tex.width / enemyFrames;
+				Rectangle srcRec = { 0.0f, 0.0f, (float)frameWidth, (float)tex.height };
+				Rectangle destRec = { wp.x, wp.y, (float)frameWidth * scale, (float)tex.height * scale };
+				Vector2 origin = { (float)frameWidth * scale / 2.0f, (float)tex.height * scale / 2.0f };
+
+				// 如果是 Goblin 或 Wolf，使用算出的角度；否則使用 0 度（不旋轉）
+				float finalRotation = (e.name == "Goblin" || e.name == "Wolf") ? (rotationAngle + 270.0f) : 0.0f;
+
+				DrawTexturePro(tex, srcRec, destRec, origin, finalRotation, WHITE);
 
 				// Goblin 盾牌防線線條（保持繪製在怪物前方）
 				if (e.name == "Goblin") {
@@ -1124,13 +1145,6 @@ int main() {
 
 			EndMode2D();
 
-			// 顯示玩家的 world->screen
-			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
-			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
-			DrawCircleV(pScreen, 5.0f, BLUE);
-			DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
-			DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
-
 			// Draw player at window-local for UI
 			player.playerPos = playerPos;
 			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
@@ -1147,8 +1161,36 @@ int main() {
 			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
 
 			// 調試信息：顯示地圖大小和鑰匙數量
-			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth()/50, dungeonMap.GetTotalHeight()/50), 10, 100, 12, YELLOW);
+			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth() / 50, dungeonMap.GetTotalHeight() / 50), 10, 100, 12, YELLOW);
 			DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
+
+			
+
+			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
+			if (!drawEnemies.empty()) {
+				const auto& e0 = drawEnemies[0];
+				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
+				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
+				DrawCircleV(eScreen, 6.0f, RED);
+				DrawText(TextFormat("Enemies: %d", (int)drawEnemies.size()), 10, 10, 14, WHITE);
+				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
+				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
+			}
+			// 顯示玩家的 world->screen
+			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
+			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
+			DrawCircleV(pScreen, 5.0f, BLUE);
+			DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
+			DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
+
+			// Draw player at window-local for UI
+			player.playerPos = playerPos;
+			AssetManager::DrawPlayerAnimated(playerPos, WHITE);
+			if (inChestRoom) {
+				DrawText("REWARD ROOM", 12, currentHeight - 22, 14, GOLD);
+			}
+
+
 
 			// 獎勵選擇 UI
 			if (showRewardUI && currentChestIndex >= 0) {

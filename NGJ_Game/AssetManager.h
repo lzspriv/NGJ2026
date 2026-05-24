@@ -22,6 +22,7 @@ public:
     static Texture2D GetPlayerTexture();
     static Texture2D GetBossTexture();
 
+    static Texture2D GetSlimeTexture();
     static Texture2D GetBatTexture();
     static Texture2D GetWolfTexture();
     static Texture2D GetGoblinTexture();
@@ -32,6 +33,9 @@ public:
     static Texture2D GetOpenDoorTexture();
     static Texture2D GetCloseDoorTexture();
     static Texture2D GetBonusDoorTexture();
+
+    static Texture2D GetWallTexture();
+    static Texture2D GetFloorTexture();
 
     static Texture2D GetItemKeyTexture();
     static Texture2D GetBuffItemTexture();
