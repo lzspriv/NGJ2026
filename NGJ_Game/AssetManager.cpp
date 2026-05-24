@@ -1,26 +1,47 @@
 #include "AssetManager.h"
 #include <iostream>
+#include <vector>
+
+const int MAX_PARTICLES = 50; // 一次最多出現 50 個粒子
+static Particle particles[MAX_PARTICLES];
 
 // ============================================================================
 // 隱藏的實體變數區 (鎖定在 cpp 內部，防止跨檔案衝突)
 // ============================================================================
 static Texture2D menuBackground;
-static Texture2D playerTexture;
-static Texture2D enemyTexture;
-static Texture2D bossTexture;
-static Texture2D itemKeyTexture;
-static Texture2D buffItemTexture;
+static Texture2D playerTexture;//check
 
-static Music bgmMenu;
-static Music bgmGameplay;
-static Music bgmBoss;
+static Texture2D batTexture;//check
+static Texture2D wolfTexture;//check
+static Texture2D goblinTexture;//check
+static Texture2D assassinTexture;
 
-static Sound soundShoot;
-static Sound soundExpand;
-static Sound soundHit;
-static Sound soundPickup;
+static Texture2D bossTexture;//check
+static Texture2D itemKeyTexture;//check
+static Texture2D treasureChestTexture;
 
-static Font gameFont;
+static Texture2D closeDoorTexture;//ToDo
+static Texture2D openDoorTexture;//ToDo
+
+static Texture2D bonusDoorTexture;//ToDo
+
+static Texture2D buffItemTexture;//check
+
+static Music bgmMenu;//check
+static Music bgmGameplay;//check
+static Music bgmBoss;//check
+
+static Sound soundShoot;//check
+static Sound soundSlash;//check
+static Sound soundExpand;//check
+static Sound soundHit;//check
+
+static Sound soundClick;//check
+static Sound soundPickup;//check
+
+static float currentVolume = 0.2f;
+
+static Font gameFont;//check
 
 //anim
 static float playerTimer = 0.0f;
@@ -38,8 +59,21 @@ void AssetManager::LoadAllAssets() {
     menuBackground = LoadTexture("assets/bg_menu.png");
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
+
+    batTexture = LoadTexture("assets/bat.png");
+    wolfTexture = LoadTexture("assets/wolf.png");
+    goblinTexture = LoadTexture("assets/goblin.png");
+    assassinTexture = LoadTexture("assets/assassin.png");
+
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
+
+    treasureChestTexture = LoadTexture("assets/treasureChest.png");;
+
+	openDoorTexture = LoadTexture("assets/Door_Opened.png");
+	closeDoorTexture = LoadTexture("assets/Door_Closed.png");
+
+    bonusDoorTexture = LoadTexture("assets/Door_Bonus.png");
 
     // 載入聲音串流
     bgmMenu = LoadMusicStream("assets/bgm_menu.mp3");
@@ -47,12 +81,19 @@ void AssetManager::LoadAllAssets() {
     bgmBoss = LoadMusicStream("assets/bgm_boss.mp3");
 
     soundShoot = LoadSound("assets/shoot.wav");
+    soundSlash = LoadSound("assets/slash.wav");
     soundExpand = LoadSound("assets/expand.wav");
+    soundClick = LoadSound("assets/click.wav");
     soundHit = LoadSound("assets/hit.wav");
     soundPickup = LoadSound("assets/pickup.wav");
 
     // 載入字體
-    gameFont = LoadFont("assets/hacker_font.ttf");
+    gameFont = LoadFont("assets/mainfont.otf");
+
+    //粒子效果
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        particles[i].active = false;
+    }
 
     std::cout << "[AssetManager] Assets loaded successfully" << std::endl;
 }
@@ -66,11 +107,22 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(itemKeyTexture);
     UnloadTexture(buffItemTexture);
 
+    UnloadTexture(openDoorTexture);
+    UnloadTexture(closeDoorTexture);
+    UnloadTexture(bonusDoorTexture);
+
+    UnloadTexture(batTexture);
+    UnloadTexture(wolfTexture);
+    UnloadTexture(goblinTexture);
+    UnloadTexture(assassinTexture);
+
     UnloadMusicStream(bgmMenu);
     UnloadMusicStream(bgmGameplay);
     UnloadMusicStream(bgmBoss);
 
     UnloadSound(soundShoot);
+    UnloadSound(soundSlash);
+    UnloadSound(soundClick);
     UnloadSound(soundExpand);
     UnloadSound(soundHit);
     UnloadSound(soundPickup);
@@ -87,7 +139,18 @@ void AssetManager::UnloadAllAssets() {
 Texture2D AssetManager::GetMenuBackground() { return menuBackground; }
 Texture2D AssetManager::GetPlayerTexture() { return playerTexture; }
 Texture2D AssetManager::GetBossTexture() { return bossTexture; }
+
+Texture2D AssetManager::GetBatTexture() { return batTexture; }
+Texture2D AssetManager::GetWolfTexture() { return wolfTexture; }
+Texture2D AssetManager::GetGoblinTexture() { return goblinTexture; }
+Texture2D AssetManager::GetAssassinTexture() { return assassinTexture; }
+
+Texture2D AssetManager::GetOpenDoorTexture() { return openDoorTexture; };
+Texture2D AssetManager::GetCloseDoorTexture() { return closeDoorTexture; };
+Texture2D AssetManager::GetBonusDoorTexture() { return bonusDoorTexture; };
+
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
+Texture2D AssetManager::GetTreasureChestTexture() { return treasureChestTexture; }
 Texture2D AssetManager::GetBuffItemTexture() { return buffItemTexture; }
 
 Music AssetManager::GetBgmMenu() { return bgmMenu; }
@@ -95,6 +158,8 @@ Music AssetManager::GetBgmGameplay() { return bgmGameplay; }
 Music AssetManager::GetBgmBoss() { return bgmBoss; }
 
 Sound AssetManager::GetSoundShoot() { return soundShoot; }
+Sound AssetManager::GetSoundSlash() { return soundSlash; }
+Sound AssetManager::GetSoundClick() { return soundClick; }
 Sound AssetManager::GetSoundExpand() { return soundExpand; }
 Sound AssetManager::GetSoundHit() { return soundHit; }
 Sound AssetManager::GetSoundPickup() { return soundPickup; }
@@ -123,22 +188,76 @@ void AssetManager::DrawPlayerAnimated(Vector2 position, Color tint) {
     DrawTexturePro(playerTexture, srcRec, destRec, origin, 0.0f, tint);
 }
 
-// 2. 怪物動畫繪製：因為場上怪物很多，各自的計時器（指標）由怪物自己保管，你只負責算公式
-void AssetManager::DrawEnemyAnimated(Vector2 position, float* animTimer, int* currentFrame, Color tint) {
-    int maxFrames = 4; // 假設怪物也是 4 格動畫
-    int frameWidth = enemyTexture.width / maxFrames;
-    float frameSpeed = 0.15f; // 怪物動得稍微慢一點點
+void AssetManager::DrawEntityAnimated(Texture2D itemTex, Vector2 position, int maxFrames,  float scale, float frameSpeed, Color tint) {
+    // 取得單格寬度
+    int frameWidth = itemTex.width / maxFrames;
 
-    // 透過指標更新該隻怪物自己的計時器
-    *animTimer += GetFrameTime();
-    if (*animTimer >= frameSpeed) {
-        *animTimer = 0.0f;
-        *currentFrame = (*currentFrame + 1) % maxFrames;
+    // 用系統絕對時間除以速度，取餘數算出現在該播哪一格
+    // 這樣不用任何變數紀錄，全球的同類道具都會完美同步閃爍
+    int currentFrame = (int)(GetTime() / frameSpeed) % maxFrames;
+
+    // 裁切與繪製矩形
+    Rectangle srcRec = { (float)currentFrame * frameWidth, 0.0f, (float)frameWidth, (float)itemTex.height };
+    float scaledWidth = (float)frameWidth * scale;
+    float scaledHeight = (float)itemTex.height * scale;
+    Rectangle destRec = { position.x, position.y,scaledWidth, scaledHeight };
+    Vector2 origin = { scaledWidth / 2.0f, scaledHeight / 2.0f };
+
+    DrawTexturePro(itemTex, srcRec, destRec, origin, 0.0f, tint);
+}
+
+void AssetManager::SetGameVolume(float volume) {
+    if (volume < 0.0f) volume = 0.0f;
+    if (volume > 1.0f) volume = 1.0f;
+
+    currentVolume = volume;
+
+    SetMasterVolume(currentVolume);
+}
+
+float AssetManager::GetGameVolume() {
+    return currentVolume;
+}
+
+// 產生粒子 (只需給座標和顏色)
+void AssetManager::EmitParticle(Vector2 position, Color color, float size) {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (!particles[i].active) {
+            particles[i].active = true;
+            particles[i].position = position;
+            // 給一個隨機的散發方向
+            particles[i].velocity = { (float)GetRandomValue(-30, 30) / 40.0f, (float)GetRandomValue(-30, 30) / 40.0f };
+            particles[i].color = color;
+            particles[i].alpha = 0.3f;
+            particles[i].lifeTime = 1.0f; // 存活 1 秒
+            particles[i].size = size;
+            //TraceLog(LOG_INFO, "Particle emitted at: %f, %f", position.x, position.y); // 檢查有沒有噴出來
+            break;
+        }
     }
+}
 
-    Rectangle srcRec = { (float)(*currentFrame) * frameWidth, 0.0f, (float)frameWidth, (float)enemyTexture.height };
-    Rectangle destRec = { position.x, position.y, (float)frameWidth, (float)enemyTexture.height };
-    Vector2 origin = { (float)frameWidth / 2.0f, (float)enemyTexture.height / 2.0f };
 
-    DrawTexturePro(enemyTexture, srcRec, destRec, origin, 0.0f, tint);
+// 更新邏輯
+void AssetManager::UpdateParticles() {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (particles[i].active) {
+            particles[i].position.x += particles[i].velocity.x;
+            particles[i].position.y += particles[i].velocity.y;
+            particles[i].lifeTime -= GetFrameTime();
+            particles[i].alpha = particles[i].lifeTime; // 漸漸透明
+
+            if (particles[i].lifeTime <= 0) particles[i].active = false;
+        }
+    }
+}
+
+// 繪製邏輯
+void AssetManager::DrawParticles() {
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        if (particles[i].active) {
+            //TraceLog(LOG_DEBUG, "Drawing particle %d at: %f, %f", i, particles[i].position.x, particles[i].position.y);
+            DrawCircleV(particles[i].position, particles[i].size, Fade(particles[i].color, particles[i].alpha));
+        }
+    }
 }
