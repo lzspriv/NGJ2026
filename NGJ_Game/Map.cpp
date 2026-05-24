@@ -128,10 +128,15 @@ void Map::DrawBaseMap() {
 	for (int y = 0; y < mapRows; y++) {
 		for (int x = 0; x < mapCols; x++) {
 			if (grid[y][x] == 0) {
-				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, LIGHTGRAY);
+				// 【空地/地板】：極深的灰藍色
+				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 20, 24, 30, 255 });
+				// 加上極暗的網格線，視覺上會有一種科技地磚的感覺
+				DrawRectangleLines(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 30, 35, 45, 255 });
 			}
 			else {
-				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, BLACK);
+				// 【牆壁】：幾乎全黑的底色，配上稍微亮一點的邊框凸顯立體感
+				DrawRectangle(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 5, 8, 12, 255 });
+				DrawRectangleLines(x * tileWidth, y * tileHeight, tileWidth, tileHeight, Color{ 40, 50, 70, 255 });
 			}
 		}
 	}
