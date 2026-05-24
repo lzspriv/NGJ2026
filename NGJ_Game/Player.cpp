@@ -1,22 +1,33 @@
 #include "Player.h"
-#include <cmath> // 用於 sqrtf 計算子彈向量
+#include <cmath> // 用於 sqrtf, atan2f, PI 運算
 
 PlayerManager::PlayerManager() {
     InitPlayer();
 }
 
 PlayerManager::~PlayerManager() {
-    // 暫無動態記憶體釋放需求
 }
 
 void PlayerManager::InitPlayer() {
-    // 初始狀態設定
     playerPos = { 200.0f, 200.0f };
-    playerSpeed = 5.0f; // 保持與你原本 main.cpp 一致的每影格移動速度
-    maxHp = 3;
+    playerSpeed = 5.0f;
+    maxHp = 100;
     currentHp = maxHp;
     score = 0;
+    attackRange = 50.0f;   // 預設攻擊距離
     bullets.clear();
+
+    currentMode = MODE_SHOOT;
+
+    // 初始化動態揮劍屬性
+    sword.center = { 0, 0 };
+    sword.startAngle = 0.0f;
+    sword.endAngle = 0.0f;
+    sword.currentAngle = 0.0f;
+    sword.duration = 0.15f;    // 揮劍動作花費 0.15 秒，可以調大來測試慢動作
+    sword.activeTimer = 0.0f;
+    sword.cooldownTimer = 0.0f;
+    sword.active = false;
 
     currentWinWidth = 400;
     currentWinHeight = 400;
@@ -24,15 +35,12 @@ void PlayerManager::InitPlayer() {
 }
 
 void PlayerManager::HandleInput() {
-    // 獲取目前視窗在螢幕上的最新絕對座標
     currentWinPos = GetWindowPosition();
-
-    // 獲取目前視窗所在的螢幕資訊，確保擴張不會超出螢幕邊界
     int monitor = GetCurrentMonitor();
     int maxWidth = GetMonitorWidth(monitor);
     int maxHeight = GetMonitorHeight(monitor);
 
-    // --- 1. 支援 WASD 與 方向鍵 移動 ---
+    // --- WASD + 方向鍵移動 ---
     if ((IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) && playerPos.x <= maxWidth - currentWinPos.x - 25) {
         playerPos.x += playerSpeed;
     }
@@ -46,75 +54,108 @@ void PlayerManager::HandleInput() {
         playerPos.y -= playerSpeed;
     }
 
-    // --- 2. 滑鼠點擊：朝滑鼠方向發射子彈 ---
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        Vector2 mousePos = GetMousePosition();
+    }
 
-        // 計算從玩家到滑鼠的方向向量 (Target - Source)
-        Vector2 dir = { mousePos.x - playerPos.x, mousePos.y - playerPos.y };
-        float length = sqrtf(dir.x * dir.x + dir.y * dir.y);
+    void PlayerManager::ProcessCombatInput() {
+        // 攻擊模式切換
+        if (IsKeyPressed(KEY_ONE)) {
+            currentMode = MODE_SHOOT;
+        }
+        if (IsKeyPressed(KEY_TWO)) {
+            currentMode = MODE_MELEE;
+        }
 
-        if (length > 0.0f) {
-            // 單位化向量 (Normalize)
-            dir.x /= length;
-            dir.y /= length;
+        // 按空白鍵攻擊，滑鼠僅提供攻擊方向
+        if (IsKeyPressed(KEY_SPACE)) {
+            Vector2 mousePos = GetMousePosition();
+            Vector2 playerCenter = { playerPos.x + 10.0f, playerPos.y + 10.0f };
+            Vector2 dir = { mousePos.x - playerCenter.x, mousePos.y - playerCenter.y };
+            float length = sqrtf(dir.x * dir.x + dir.y * dir.y);
 
-            // 設定子彈速度 (假設子彈速度為 8.0f)
-            Bullet newBullet;
-            newBullet.pos = playerPos;
-            newBullet.speed = { dir.x * 8.0f, dir.y * 8.0f };
-            newBullet.active = true;
+            if (length > 0.0f) {
+                dir.x /= length;
+                dir.y /= length;
 
-            // 加入 bullets 向量中
-            bullets.push_back(newBullet);
+                if (currentMode == MODE_SHOOT) {
+                    Bullet newBullet;
+                    newBullet.pos = playerCenter; // spawn from player's center
+                    newBullet.speed = { dir.x * 8.0f, dir.y * 8.0f };
+                    newBullet.active = true;
+                    bullets.push_back(newBullet);
+                }
+                else if (currentMode == MODE_MELEE && sword.cooldownTimer <= 0.0f) {
+                    sword.active = true;
+                    sword.activeTimer = sword.duration;
+                    sword.cooldownTimer = 0.4f;
+
+                    float targetAngleRad = atan2f(dir.y, dir.x);
+                    float targetAngleDeg = targetAngleRad * (180.0f / PI);
+                    float slashArc = 90.0f;
+                    sword.startAngle = targetAngleDeg - (slashArc / 2.0f);
+                    sword.endAngle = targetAngleDeg + (slashArc / 2.0f);
+                    sword.currentAngle = sword.startAngle;
+                    sword.center = playerCenter;
+                }
+            }
         }
     }
-}
 
 void PlayerManager::UpdatePlayerAndWindow(float dt) {
-    // 再次確保獲取最新視窗與螢幕邊界資訊
     currentWinPos = GetWindowPosition();
     int monitor = GetCurrentMonitor();
     int maxWidth = GetMonitorWidth(monitor);
     int maxHeight = GetMonitorHeight(monitor);
 
-    // --- 1. 核心四向視窗推動/擴張邏輯 ---
-
-    // ➡️ 往右擴張
+    // --- 核心四向視窗推動邏輯 ---
     if (playerPos.x >= currentWinWidth - 20 && playerPos.x <= maxWidth - currentWinPos.x - 20) {
         currentWinWidth += 10;
         SetWindowSize(currentWinWidth, currentWinHeight);
     }
-
-    // ⬇️ 往下擴張
     if (playerPos.y >= currentWinHeight - 20 && playerPos.y <= maxHeight - currentWinPos.y - 20) {
         currentWinHeight += 10;
         SetWindowSize(currentWinWidth, currentWinHeight);
     }
-
-    // ⬅️ 往左擴張 (關鍵修正)
     if (playerPos.x <= 0 && currentWinPos.x > 0) {
-        currentWinWidth += 10;                               // 1. 視窗變寬
-        SetWindowPosition(currentWinPos.x - 10, currentWinPos.y); // 2. 視窗左移
-        SetWindowSize(currentWinWidth, currentWinHeight);         // 3. 同步更新尺寸
-        playerPos.x += 10;                                   // 4. 主角相對座標右移，防止卡牆
+        currentWinWidth += 10;
+        SetWindowPosition(currentWinPos.x - 10, currentWinPos.y);
+        SetWindowSize(currentWinWidth, currentWinHeight);
+        playerPos.x += 10;
     }
-
-    // ⬆️ 往上擴張 (關鍵修正)
     if (playerPos.y <= 0 && currentWinPos.y > 40) {
-        currentWinHeight += 10;                              // 1. 視窗變高
-        SetWindowPosition(currentWinPos.x, currentWinPos.y - 10); // 2. 視窗上移
-        SetWindowSize(currentWinWidth, currentWinHeight);         // 3. 同步更新尺寸
-        playerPos.y += 10;                                   // 4. 主角相對座標下移，防止卡牆
+        currentWinHeight += 10;
+        SetWindowPosition(currentWinPos.x, currentWinPos.y - 10);
+        SetWindowSize(currentWinWidth, currentWinHeight);
+        playerPos.y += 10;
     }
 
-    // --- 2. 更新子彈位置與邊界回收 ---
+    // --- 核心功能：更新動態揮劍的旋轉角度 ---
+    if (sword.active) {
+        sword.center = { playerPos.x + 10.0f, playerPos.y + 10.0f };
+        sword.activeTimer -= dt;
+
+        if (sword.activeTimer <= 0.0f) {
+            sword.active = false;
+        }
+        else {
+            // 計算揮劍的進度比率 (從 0.0 到 1.0)
+            // 剛點擊時 activeTimer 等於 duration，比率為 0；快結束時 activeTimer 接近 0，比率為 1
+            float progress = (sword.duration - sword.activeTimer) / sword.duration;
+
+            // 讓目前的角度根據進度在起點與終點之間進行線性插值 (Lerp)
+            sword.currentAngle = sword.startAngle + (sword.endAngle - sword.startAngle) * progress;
+        }
+    }
+
+    if (sword.cooldownTimer > 0.0f) {
+        sword.cooldownTimer -= dt;
+    }
+
+    // --- 更新子彈位置與邊界回收 (window-local) ---
     for (size_t i = 0; i < bullets.size(); i++) {
         if (bullets[i].active) {
             bullets[i].pos.x += bullets[i].speed.x;
             bullets[i].pos.y += bullets[i].speed.y;
 
-            // 飛出目前視窗範圍就標記為無效
             if (bullets[i].pos.x < 0 || bullets[i].pos.x > currentWinWidth ||
                 bullets[i].pos.y < 0 || bullets[i].pos.y > currentWinHeight) {
                 bullets[i].active = false;
@@ -122,7 +163,48 @@ void PlayerManager::UpdatePlayerAndWindow(float dt) {
         }
     }
 
-    // 清除不活躍的子彈，釋放 Vector 記憶體
+    for (auto it = bullets.begin(); it != bullets.end();) {
+        if (!it->active) {
+            it = bullets.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+void PlayerManager::UpdateCombat(float dt) {
+    // 更新揮劍狀態
+    if (sword.active) {
+        sword.center = { playerPos.x + 10.0f, playerPos.y + 10.0f };
+        sword.activeTimer -= dt;
+
+        if (sword.activeTimer <= 0.0f) {
+            sword.active = false;
+        }
+        else {
+            float progress = (sword.duration - sword.activeTimer) / sword.duration;
+            sword.currentAngle = sword.startAngle + (sword.endAngle - sword.startAngle) * progress;
+        }
+    }
+
+    if (sword.cooldownTimer > 0.0f) {
+        sword.cooldownTimer -= dt;
+    }
+
+    // 子彈更新（已在 window-local 座標運算）
+    for (size_t i = 0; i < bullets.size(); i++) {
+        if (bullets[i].active) {
+            bullets[i].pos.x += bullets[i].speed.x;
+            bullets[i].pos.y += bullets[i].speed.y;
+
+            if (bullets[i].pos.x < 0 || bullets[i].pos.x > currentWinWidth ||
+                bullets[i].pos.y < 0 || bullets[i].pos.y > currentWinHeight) {
+                bullets[i].active = false;
+            }
+        }
+    }
+
     for (auto it = bullets.begin(); it != bullets.end();) {
         if (!it->active) {
             it = bullets.erase(it);
@@ -134,13 +216,32 @@ void PlayerManager::UpdatePlayerAndWindow(float dt) {
 }
 
 void PlayerManager::DrawPlayer() {
-    // 1. 畫出所有子彈 (黃色圓點)
+    // 1. 畫出子彈
     for (const auto& bullet : bullets) {
         if (bullet.active) {
             DrawCircleV(bullet.pos, 4.0f, YELLOW);
         }
     }
 
-    // 2. 畫出主角 (20x20 藍色方塊)
-    DrawRectangleV(playerPos, { 20.0f, 20.0f }, BLUE);
+    // 2. 核心功能：畫出沿著扇形軌跡真正移動/旋轉的長方形劍
+    if (sword.active) {
+        // 設定長方形劍的尺寸：細長的實體長方形
+        Rectangle swordRect = { sword.center.x, sword.center.y, 55.0f, 5.0f };
+
+        // 旋轉錨點設在劍的底部中心
+        Vector2 origin = { 0.0f, 2.5f };
+
+        // 畫出長方形劍身 (這次它會隨著每一幀的 currentAngle 產生旋轉動畫！)
+        DrawRectanglePro(swordRect, origin, sword.currentAngle, RAYWHITE);
+
+        // 可選：可以加上一個超淡的劍氣軌跡當襯底，不想看見殘影可以把下面這行刪除
+        // DrawCircleSector(sword.center, 55.0f, sword.startAngle, sword.currentAngle, 16, Fade(SKYBLUE, 0.2f));
+    }
+
+    // 3. 畫出主角
+    Color playerColor = (currentMode == MODE_SHOOT) ? BLUE : ORANGE;
+    DrawRectangleV(playerPos, { 20.0f, 20.0f }, playerColor);
+
+    // 印出目前的攻擊模式狀態
+    DrawText(currentMode == MODE_SHOOT ? "MODE: SHOOT [1]" : "MODE: MELEE [2]", 20, 110, 16, RAYWHITE);
 }

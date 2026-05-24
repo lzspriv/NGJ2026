@@ -2,11 +2,27 @@
 #include "raylib.h"
 #include <vector>
 
-// 玩家子彈結構體
 struct Bullet {
     Vector2 pos;
     Vector2 speed;
     bool active;
+};
+
+enum AttackMode {
+    MODE_SHOOT,
+    MODE_MELEE
+};
+
+// 近戰（動態揮砍劍）結構體
+struct SwordAttack {
+    Vector2 center;       // 揮劍的圓心 (玩家中心)
+    float startAngle;     // 揮砍起點角度 (度)
+    float endAngle;       // 揮砍終點角度 (度)
+    float currentAngle;   // 目前長方形劍身所在的實時角度 (度)
+    float duration;       // 整個揮砍動作總共要花多少秒
+    float activeTimer;    // 揮劍計時器 (秒)
+    float cooldownTimer;  // 揮劍冷卻計時器 (秒)
+    bool active;          // 目前是否正在揮劍中
 };
 
 class PlayerManager {
@@ -14,11 +30,14 @@ public:
     Vector2 playerPos;
     float playerSpeed;
     int maxHp;
-    int currentHp;          // 改成血量制增加容錯，而非一擊必殺
+    int currentHp;
     int score;
+    float attackRange;      // 攻擊距離（可以通過寶箱獎勵增加）
     std::vector<Bullet> bullets;
 
-    // 視窗目前的寬高與在螢幕上的絕對座標（用於控制視窗變化）
+    AttackMode currentMode;
+    SwordAttack sword;
+
     int currentWinWidth;
     int currentWinHeight;
     Vector2 currentWinPos;
@@ -26,15 +45,12 @@ public:
     PlayerManager();
     ~PlayerManager();
 
-    // 初始化玩家屬性與初始 400x400 視窗設定
     void InitPlayer();
-
-    // 處理 WASD 移動、滑鼠點擊發射子彈
     void HandleInput();
-
-    // 更新子彈位置與核心的「四向視窗推動/擴張」邏輯
+    // 僅處理攻擊輸入（不改變視窗或玩家位置）
+    void ProcessCombatInput();
+    // 更新攻擊相關（劍、子彈）計時與位置
+    void UpdateCombat(float dt);
     void UpdatePlayerAndWindow(float dt);
-
-    // 繪製玩家小藍方塊與所有發射出去的子彈
     void DrawPlayer();
 };
