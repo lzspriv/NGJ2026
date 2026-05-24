@@ -1312,8 +1312,17 @@ int main() {
 		// 主選單與暫停 UI 覆蓋層
 		// ==========================================
 		if (!isGameStarted) {
-			// 主選單黑幕與標題
-			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.85f));
+			// 1. 繪製背景圖 (取代原先的 ClearBackground)
+			// 使用 DrawTexturePro 可以讓圖片自動縮放填滿目前視窗
+			Texture2D menuTex = AssetManager::GetMenuBackground();
+			Rectangle srcRec = { 0.0f, 0.0f, (float)menuTex.width, (float)menuTex.height };
+			Rectangle destRec = { 0.0f, 0.0f, (float)currentWidth, (float)currentHeight };
+			DrawTexturePro(menuTex, srcRec, destRec, { 0, 0 }, 0.0f, WHITE);
+
+			// 2. 疊加一層淡淡的遮罩，確保文字清晰可見
+			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.6f));
+
+			// 3. 繪製標題與說明文字
 			DrawText("NGJ 2026: ABSOLUTE EXPANSION", currentWidth / 2 - 160, currentHeight / 2 - 80, 20, GREEN);
 			DrawText("Press [ENTER] to Initialize System", currentWidth / 2 - 140, currentHeight / 2 - 20, 16, RAYWHITE);
 
