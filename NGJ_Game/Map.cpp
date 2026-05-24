@@ -25,6 +25,9 @@ void Map::InitLevel(int level) {
 	doorUnlocked = false;
 	bossExitDoorActive = false;
 
+	// 【新增】：確保每關一開始絕對清空上一關殘留的 Boss 障礙物
+	ClearBossObstacles();
+
 	// 1. 地圖大小嚴格綁定為螢幕大小，不再無限擴張！
 	mapCols = monitorW / tileWidth;
 	mapRows = monitorH / tileHeight;
