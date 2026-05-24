@@ -93,6 +93,8 @@ int main() {
 
 	auto spawnChestRoomEnemies = [&]() {
 		chestRoomEnemies.clear();
+		int bonus = dungeonMap.GetCurrentLevel() * 3; // <--- 在迴圈外或迴圈內算好 bonus 都可以
+
 		for (int i = 0; i < 3; i++) {
 			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 			int t = std::rand() % typeCount;
@@ -103,49 +105,54 @@ int main() {
 			float py = (float)upperMinY + (float)(std::rand() % (upperMaxY - upperMinY + 1));
 			NGJ::Vec2 pos(px, py);
 
+			// 🔻🔻🔻 注意這裡是 chestRoomEnemies 以及 pos 🔻🔻🔻
 			switch (t) {
 			case 0:
-				chestRoomEnemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, pos);
+				chestRoomEnemies.emplace_back("Goblin", 8 + bonus, 5 + bonus, 0, 40.0f, 300.0f, 24.0f, 1.0f, pos);
 				break;
 			case 1:
-				chestRoomEnemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, pos);
+				chestRoomEnemies.emplace_back("Wolf", 12 + bonus, 5 + bonus, 1, 80.0f, 400.0f, 20.0f, 1.2f, pos);
 				chestRoomEnemies.back().SetRangedAttack(true, 260.0f, 0.7f);
 				break;
 			case 2:
-				chestRoomEnemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, pos);
+				chestRoomEnemies.emplace_back("Slime", 6 + bonus, 5 + bonus, 0, 30.0f, 250.0f, 18.0f, 0.8f, pos);
 				break;
 			case 3:
-				chestRoomEnemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, pos);
+				chestRoomEnemies.emplace_back("Bat", 5 + bonus, 5 + bonus, 0, 120.0f, 350.0f, 14.0f, 0.6f, pos);
 				chestRoomEnemies.back().SetRangedAttack(true, 330.0f, 0.45f);
 				break;
 			default:
-				chestRoomEnemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, pos);
+				chestRoomEnemies.emplace_back("Assassin", 7 + bonus, 6 + bonus, 0, 20.0f, 420.0f, 18.0f, 0.9f, pos);
 				break;
 			}
 		}
-	};
+		};
 
 	auto spawnRandomMinion = [&](int count) {
 		for (int i = 0; i < count; i++) {
 			int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 			int t = std::rand() % typeCount;
+			// 1. 先計算加成值
+			int bonus = dungeonMap.GetCurrentLevel() * 3;
+
+			// 2. 將 bonus 加到各怪物的 HP (第 2 參數) 與 Attack (第 3 參數)
 			switch (t) {
 			case 0:
-				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+				enemies.emplace_back("Goblin", 8 + bonus, 5 + bonus, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 				break;
 			case 1:
-				enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+				enemies.emplace_back("Wolf", 12 + bonus, 5 + bonus, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 				enemies.back().SetRangedAttack(true, 260.0f, 0.7f);
 				break;
 			case 2:
-				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+				enemies.emplace_back("Slime", 6 + bonus, 5 + bonus, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 				break;
 			case 3:
-				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+				enemies.emplace_back("Bat", 5 + bonus, 5 + bonus, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
 				enemies.back().SetRangedAttack(true, 330.0f, 0.45f);
 				break;
 			default:
-				enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+				enemies.emplace_back("Assassin", 7 + bonus, 6 + bonus, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 				break;
 			}
 				}
@@ -357,12 +364,15 @@ int main() {
 			}
 			else {
 				// 普通關卡怪
-				enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
-				enemies.emplace_back("Wolf", 8, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
-				enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
-				enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+				int bonus = dungeonMap.GetCurrentLevel() * 3;
+
+				enemies.emplace_back("Goblin", 8 + bonus, 5 + bonus, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+				enemies.emplace_back("Wolf", 12 + bonus, 5 + bonus, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+				enemies.emplace_back("Slime", 6 + bonus, 5 + bonus, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+				enemies.emplace_back("Bat", 5 + bonus, 5 + bonus, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+
 				if (dungeonMap.GetCurrentLevel() >= 2) {
-					enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+					enemies.emplace_back("Assassin", 7 + bonus, 6 + bonus, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 				}
 				if (enemies.size() > 1) enemies[1].SetRangedAttack(true, 260.0f, 0.7f);
 				if (enemies.size() > 3) enemies[3].SetRangedAttack(true, 330.0f, 0.45f);
@@ -820,23 +830,27 @@ int main() {
 				enemySpawnTimer -= enemySpawnInterval;
 				int typeCount = (dungeonMap.GetCurrentLevel() >= 2) ? 5 : 4;
 				int t = std::rand() % typeCount;
+				// 1. 先計算加成值
+				int bonus = dungeonMap.GetCurrentLevel() * 3;
+
+				// 2. 將 bonus 加到各怪物的 HP (第 2 參數) 與 Attack (第 3 參數)
 				switch (t) {
 				case 0:
-					enemies.emplace_back("Goblin", 8, 5, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
+					enemies.emplace_back("Goblin", 8 + bonus, 5 + bonus, 0, 40.0f, 300.0f, 24.0f, 1.0f, spawnRandom());
 					break;
 				case 1:
-					enemies.emplace_back("Wolf", 12, 5, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
+					enemies.emplace_back("Wolf", 12 + bonus, 5 + bonus, 1, 80.0f, 400.0f, 20.0f, 1.2f, spawnRandom());
 					enemies.back().SetRangedAttack(true, 260.0f, 0.7f);
 					break;
 				case 2:
-					enemies.emplace_back("Slime", 6, 5, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
+					enemies.emplace_back("Slime", 6 + bonus, 5 + bonus, 0, 30.0f, 250.0f, 18.0f, 0.8f, spawnRandom());
 					break;
 				case 3:
-					enemies.emplace_back("Bat", 5, 5, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
+					enemies.emplace_back("Bat", 5 + bonus, 5 + bonus, 0, 120.0f, 350.0f, 14.0f, 0.6f, spawnRandom());
 					enemies.back().SetRangedAttack(true, 330.0f, 0.45f);
 					break;
 				default:
-					enemies.emplace_back("Assassin", 7, 6, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
+					enemies.emplace_back("Assassin", 7 + bonus, 6 + bonus, 0, 20.0f, 420.0f, 18.0f, 0.9f, spawnRandom());
 					break;
 				}
 				swordHitThisSwing.push_back(false);
