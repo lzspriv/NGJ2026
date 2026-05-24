@@ -22,6 +22,7 @@ public:
     static Texture2D GetPlayerTexture();
     static Texture2D GetBossTexture();
 
+    static Texture2D GetSlimeTexture();
     static Texture2D GetBatTexture();
     static Texture2D GetWolfTexture();
     static Texture2D GetGoblinTexture();

@@ -188,6 +188,7 @@ int main() {
 		AssetManager::DrawEntityAnimated(AssetManager::GetBonusDoorTexture(), Vector2(300, 400), 1, 3.0f, 100, WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetTreasureChestTexture(), Vector2(400, 400), 1, 3.0f, 100, WHITE);
 
+		AssetManager::DrawEntityAnimated(AssetManager::GetSlimeTexture(), Vector2(500, 250), 4, 3.0f, 0.1f, WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetBatTexture(), Vector2(100, 250), 4, 3.0f, 0.1f, WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetWolfTexture(), Vector2(200, 250), 4, 3.0f, 0.1f, WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetGoblinTexture(), Vector2(300, 250), 4, 3.0f, 0.1f, WHITE);

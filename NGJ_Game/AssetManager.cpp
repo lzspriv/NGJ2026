@@ -11,10 +11,11 @@ static Particle particles[MAX_PARTICLES];
 static Texture2D menuBackground;
 static Texture2D playerTexture;//check
 
+static Texture2D slimeTexture;//check
 static Texture2D batTexture;//check
 static Texture2D wolfTexture;//check
 static Texture2D goblinTexture;//check
-static Texture2D assassinTexture;
+static Texture2D assassinTexture;//check
 
 static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
@@ -60,6 +61,7 @@ void AssetManager::LoadAllAssets() {
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
 
+    slimeTexture = LoadTexture("assets/slime.png");
     batTexture = LoadTexture("assets/bat.png");
     wolfTexture = LoadTexture("assets/wolf.png");
     goblinTexture = LoadTexture("assets/goblin.png");
@@ -111,6 +113,7 @@ void AssetManager::UnloadAllAssets() {
     UnloadTexture(closeDoorTexture);
     UnloadTexture(bonusDoorTexture);
 
+    UnloadTexture(slimeTexture);
     UnloadTexture(batTexture);
     UnloadTexture(wolfTexture);
     UnloadTexture(goblinTexture);
@@ -140,6 +143,7 @@ Texture2D AssetManager::GetMenuBackground() { return menuBackground; }
 Texture2D AssetManager::GetPlayerTexture() { return playerTexture; }
 Texture2D AssetManager::GetBossTexture() { return bossTexture; }
 
+Texture2D AssetManager::GetSlimeTexture() { return slimeTexture; }
 Texture2D AssetManager::GetBatTexture() { return batTexture; }
 Texture2D AssetManager::GetWolfTexture() { return wolfTexture; }
 Texture2D AssetManager::GetGoblinTexture() { return goblinTexture; }
