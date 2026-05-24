@@ -63,7 +63,7 @@ NGJ::Enemy::Enemy(const std::string& name_,
 	attackTimer(0.0f),
 	patrolRadius(80.0f),
 	canShoot(false),
-	bulletSpeed(220.0f),
+	bulletSpeed(200.0f),
 	bulletCooldown(1.2f),
 	bulletTimer(0.0f),
 	dashCooldownTimer(0.0f),
@@ -77,9 +77,9 @@ NGJ::Enemy::Enemy(const std::string& name_,
 	bossAttackCycleTimer(0.0f),
 	bossBulletBarrageTimer(0.0f),
 	bossIdleLockTimer(0.0f),
-	bossBulletDamage(7),
-	bossMeleeDamage(10),
-	bossBarrageWaveCount(4),
+	bossBulletDamage(10),
+	bossMeleeDamage(15),
+	bossBarrageWaveCount(5),
 	bossBarrageWaveIndex(0),
 	bossBarrageWaveTimer(0.0f),
 	bossBulletBarrageActive(false),
@@ -193,16 +193,16 @@ std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBulletsMutable() { return bullets;
 
 void NGJ::Enemy::ConfigureBossPhaseOne() {
 	isBoss = true;
-	maxHP = 100;
-	currentHP = 100;
+	maxHP = 150;
+	currentHP = 150;
 	defense = 1;
 	attackPower = bossMeleeDamage;
 	canShoot = true;
 	bulletSpeed = bossBulletSpeed;
 	bulletCooldown = bossBulletCooldown;
-	attackRange = 36.0f;
+	attackRange = 50.0f;
 	detectionRange = 9999.0f;
-	moveSpeed = 60.0f;
+	moveSpeed = 100.0f;
 	bossPhaseTimer = 0.0f;
 	bossAttackCycleTimer = 0.0f;
 	bossBulletBarrageTimer = 0.0f;
@@ -404,12 +404,12 @@ void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, M
 					if (canTeleport) {
 						position = teleportTarget;
 						state = NGJ::EnemyState::Attack;
-						attackTimer = 0.3f; // 瞬移後延遲 0.3 秒再能攻擊
+						attackTimer = 0.4f; // 瞬移後延遲 0.3 秒再能攻擊
 					}
 				}
 			}
 
-			assassinTeleportTimer = 3.0f;
+			assassinTeleportTimer = 1.5f;
 			return;
 		}
 	}
