@@ -1,4 +1,5 @@
 #include "Map.h"
+#include "AssetManager.h"
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
@@ -147,34 +148,32 @@ void Map::DrawBaseMap() {
 
 void Map::DrawObjects() {
 	if (!IsBossLevel()) {
-		// Draw keys
+		// Draw keys (替換為鑰匙貼圖)
 		for (size_t i = 0; i < keyPositions.size(); i++) {
 			if (!keyCollected[i]) {
-				DrawCircleV(keyPositions[i], 8.0f, YELLOW);
+				// 參數: 貼圖, 座標, 動畫格數(靜態填1), 縮放比例, 動畫速度, 顏色濾鏡
+				AssetManager::DrawEntityAnimated(AssetManager::GetItemKeyTexture(), keyPositions[i], 7, 1.0f, 0.1f, WHITE);
 			}
 		}
 
-		// Draw chest
+		// Draw chest (替換為寶箱貼圖)
 		for (size_t i = 0; i < chestPositions.size(); i++) {
 			if (!chestOpened[i]) {
-				Rectangle chestRect = { chestPositions[i].x - 14.0f, chestPositions[i].y - 10.0f, 28.0f, 20.0f };
-				DrawRectangleRec(chestRect, GOLD);
-				DrawRectangleLines((int)chestRect.x, (int)chestRect.y, (int)chestRect.width, (int)chestRect.height, BROWN);
+				AssetManager::DrawEntityAnimated(AssetManager::GetTreasureChestTexture(), chestPositions[i], 1, 1.0f, 1.0f, WHITE);
 			}
 		}
 
-		// Draw door
-		Color doorColor = doorUnlocked ? Color{ 0, 200, 120, 255 } : MAROON;
-		DrawCircleV(doorPos, 14.0f, doorColor);
+		// Draw door (根據解鎖狀態替換為開門/關門貼圖)
+		Texture2D doorTex = doorUnlocked ? AssetManager::GetOpenDoorTexture() : AssetManager::GetCloseDoorTexture();
+		AssetManager::DrawEntityAnimated(doorTex, doorPos, 1, 1.0f, 1.0f, WHITE);
 	}
 
+	// Boss 打完出現的綠色通關門 (替換為 Bonus 門貼圖)
 	if (bossExitDoorActive) {
-		Rectangle exitRect = { playerStartPos.x - 18.0f, playerStartPos.y - 26.0f, 36.0f, 52.0f };
-		DrawRectangleRec(exitRect, GREEN);
-		DrawRectangleLines((int)exitRect.x, (int)exitRect.y, (int)exitRect.width, (int)exitRect.height, WHITE);
+		AssetManager::DrawEntityAnimated(AssetManager::GetBonusDoorTexture(), playerStartPos, 1, 1.0f, 1.0f, WHITE);
 	}
 
-	// Draw boss obstacles
+	// Draw boss obstacles (如果美術有畫障礙物貼圖，也可以在這裡換掉，目前保留預設方塊)
 	for (const auto& obstacle : bossObstacles) {
 		if (!obstacle.active) continue;
 		DrawRectangleRec(obstacle.rect, DARKGRAY);

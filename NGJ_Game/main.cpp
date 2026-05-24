@@ -1058,21 +1058,34 @@ int main() {
 				}
 			}
 
-			// Draw enemies in world-space
+			// Draw enemies in world-space (全面改用 4 格動畫貼圖)
 			for (const auto& e : drawEnemies) {
 				if (e.GetIsDead()) continue;
-				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
-				Color col = GRAY;
-				switch (e.GetState()) {
-				case NGJ::EnemyState::Idle: col = LIGHTGRAY; break;
-				case NGJ::EnemyState::Patrol: col = GREEN; break;
-				case NGJ::EnemyState::Chase: col = ORANGE; break;
-				case NGJ::EnemyState::Attack: col = RED; break;
-				case NGJ::EnemyState::Dead: col = DARKGRAY; break;
-				}
-				DrawCircle((int)wp.x, (int)wp.y, 12, col);
 
-				// Goblin 盾牌線條（朝向玩家）
+				Vector2 wp = { e.GetPosition().x, e.GetPosition().y };
+
+				// 1. 根據怪物種類，動態指派對應的貼圖、格數與縮放
+				Texture2D tex;
+				int enemyFrames = 4;   // 同主角一樣，怪物全體皆為 4 格動態圖
+				float scale = 1.0f;    // 預設一倍大
+				float animSpeed = 0.1f; // 影格切換速度
+
+				if (e.name == "Bat") tex = AssetManager::GetBatTexture();
+				else if (e.name == "Wolf") tex = AssetManager::GetWolfTexture();
+				else if (e.name == "Goblin") tex = AssetManager::GetGoblinTexture();
+				else if (e.name == "Assassin") tex = AssetManager::GetAssassinTexture();
+				else if (e.name == "GIANT BOSS") {
+					tex = AssetManager::GetBossTexture();
+					scale = 2.0f;       // Boss 放大兩倍，維持 4 格動畫
+				}
+				else {
+					tex = AssetManager::GetGoblinTexture(); // 防呆預設
+				}
+
+				// 2. 呼叫動畫繪製函式
+				AssetManager::DrawEntityAnimated(tex, wp, enemyFrames, scale, animSpeed, WHITE);
+
+				// Goblin 盾牌防線線條（保持繪製在怪物前方）
 				if (e.name == "Goblin") {
 					float fx = playerMapPos.x - wp.x;
 					float fy = playerMapPos.y - wp.y;
@@ -1091,7 +1104,9 @@ int main() {
 					}
 				}
 
-				int barW = 30; int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
+				// 血條繪製
+				int barW = 30;
+				int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, barW, 5, DARKGRAY);
 				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, hpW, 5, RED);
 				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, WHITE);

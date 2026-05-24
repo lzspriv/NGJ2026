@@ -30,6 +30,9 @@
     <ClCompile Include="Enemy.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="AssetManager.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -53,5 +56,69 @@
     <ClInclude Include="PlatformUtils.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="assets\bgm_boss.mp3" />
+    <Media Include="assets\bgm_gameplay.mp3" />
+    <Media Include="assets\bgm_menu.mp3" />
+    <Media Include="assets\click.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+    <Media Include="assets\expand.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+    <Media Include="assets\hurt.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+    <Media Include="assets\pickup.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+    <Media Include="assets\shoot.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+    <Media Include="assets\slash.wav">
+      <Filter>資源檔</Filter>
+    </Media>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\player.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\key.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\boss.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\buff.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\assassin.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\bat.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Closed.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Opened.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\goblin.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\wolf.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\treasureChest.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Bonus.png">
+      <Filter>資源檔</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="assets\mainfont.otf" />
   </ItemGroup>
 </Project>
