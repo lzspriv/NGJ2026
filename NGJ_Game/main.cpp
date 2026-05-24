@@ -655,6 +655,21 @@ int main() {
 		if (!isUiPause) {
 			player.ProcessCombatInput();
 			player.UpdateCombat(dt);
+
+			// 【新增】：檢查玩家子彈是否撞到迷宮牆壁
+			if (!inChestRoom) {
+				for (auto& b : player.bullets) {
+					if (!b.active) continue;
+
+					// 將子彈的視窗相對座標轉為大世界座標
+					Vector2 bulletWorld = localToCombatWorld(b.pos);
+
+					// 如果大世界座標對應的是牆壁，子彈立刻失效
+					if (dungeonMap.IsWall(bulletWorld.x, bulletWorld.y)) {
+						b.active = false;
+					}
+				}
+			}
 		}
 
 		// 更新敵人狀態（使用世界座標的 player 位置）
