@@ -1226,30 +1226,27 @@ int main() {
 			DrawText(TextFormat("Key Status: %d/%d", dungeonMap.GetKeysCollected(), dungeonMap.GetTotalKeys()), 14, 32, 14, dungeonMap.IsDoorUnlocked() ? GREEN : RED);
 			DrawText(TextFormat("HP: %d/%d", player.currentHp, player.maxHp), 14, 50, 14, player.currentHp <= 1 ? RED : WHITE);
 
-			// 調試信息：顯示地圖大小和鑰匙數量
-			DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth() / 50, dungeonMap.GetTotalHeight() / 50), 10, 100, 12, YELLOW);
-			DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
+			// 2. 將不需要的 Debug 資訊全部隱藏在 designerMode 條件下
+			if (designerMode) {
+				DrawText(TextFormat("Map Size: %dx%d tiles", dungeonMap.GetTotalWidth() / 50, dungeonMap.GetTotalHeight() / 50), 10, 100, 12, YELLOW);
+				DrawText(TextFormat("Keys Found: %d", dungeonMap.GetKeysCollected()), 10, 115, 12, YELLOW);
 
-			
-
-			// Debug: 顯示怪物/玩家世界座標與轉換到螢幕位置，幫助定位為何看不到怪物
-			if (!drawEnemies.empty()) {
-				const auto& e0 = drawEnemies[0];
-				Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
-				Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
-				DrawCircleV(eScreen, 6.0f, RED);
-				DrawText(TextFormat("Enemies: %d", (int)drawEnemies.size()), 10, 10, 14, WHITE);
-				DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
-				DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
+				// 敵人座標與玩家座標除錯
+				if (!drawEnemies.empty()) {
+					const auto& e0 = drawEnemies[0];
+					Vector2 eWorld = { e0.GetPosition().x, e0.GetPosition().y };
+					Vector2 eScreen = GetWorldToScreen2D(eWorld, camera);
+					DrawCircleV(eScreen, 6.0f, RED);
+					DrawText(TextFormat("Enemies: %d", (int)drawEnemies.size()), 10, 10, 14, WHITE);
+					DrawText(TextFormat("E0 world: %.0f, %.0f", eWorld.x, eWorld.y), 10, 28, 12, WHITE);
+					DrawText(TextFormat("E0 screen: %.0f, %.0f", eScreen.x, eScreen.y), 10, 42, 12, WHITE);
+				}
+				Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
+				Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
+				DrawCircleV(pScreen, 5.0f, BLUE);
+				DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
+				DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
 			}
-			
-			// 顯示玩家的 world->screen
-			Vector2 pWorld = { playerMapPos.x, playerMapPos.y };
-			Vector2 pScreen = GetWorldToScreen2D(pWorld, camera);
-			DrawCircleV(pScreen, 5.0f, BLUE);
-			DrawText(TextFormat("Player world: %.0f, %.0f", pWorld.x, pWorld.y), 10, 58, 12, WHITE);
-			DrawText(TextFormat("Player screen: %.0f, %.0f", pScreen.x, pScreen.y), 10, 74, 12, WHITE);
-
 			// Draw player at window-local for UI
 			player.playerPos = playerPos;
 
