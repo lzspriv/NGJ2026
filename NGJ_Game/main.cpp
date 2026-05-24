@@ -206,6 +206,21 @@ int main() {
 			monTop = 0;
 		}
 
+		// 依目前血量調整視野範圍：血量越高，視窗越大
+		const int minVisionSize = 280;
+		const int maxVisionSize = 560;
+		float hpRatio = (player.maxHp > 0) ? ((float)player.currentHp / (float)player.maxHp) : 0.0f;
+		hpRatio = std::clamp(hpRatio, 0.0f, 1.0f);
+		int targetVisionSize = (int)(minVisionSize + (maxVisionSize - minVisionSize) * hpRatio);
+		targetVisionSize = std::clamp(targetVisionSize, minVisionSize, maxVisionSize);
+		int targetWidth = std::min(targetVisionSize, maxWidth);
+		int targetHeight = std::min(targetVisionSize, maxHeight);
+		if (targetWidth != currentWidth || targetHeight != currentHeight) {
+			currentWidth = targetWidth;
+			currentHeight = targetHeight;
+			SetWindowSize(currentWidth, currentHeight);
+		}
+
 		int relWinX = (int)winPos.x - monLeft;
 		int relWinY = (int)winPos.y - monTop;
 		if (relWinX < 0) relWinX = 0;
@@ -261,8 +276,8 @@ int main() {
 		if (inChestRoom && !isUiPause) {
 			float roomMinX = 20.0f;
 			float roomMinY = 20.0f;
-			float roomMaxX = (float)currentWidth - 20.0f;
-			float roomMaxY = (float)currentHeight - 20.0f;
+			float roomMaxX = (float)player.currentWinWidth - 20.0f;
+			float roomMaxY = (float)player.currentWinHeight - 20.0f;
 			if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) playerPos.x += playerSpeed;
 			if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) playerPos.x -= playerSpeed;
 			if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) playerPos.y += playerSpeed;
@@ -560,7 +575,7 @@ int main() {
 		// 更新敵人狀態（使用世界座標的 player 位置）
 		NGJ::Vec2 playerWorldPos(playerMapPos.x, playerMapPos.y);
 		NGJ::Vec2 viewMin((float)(winPos.x - monLeft), (float)(winPos.y - monTop));
-		NGJ::Vec2 viewMax(viewMin.x + (float)currentWidth, viewMin.y + (float)currentHeight);
+		NGJ::Vec2 viewMax(viewMin.x + (float)player.currentWinWidth, viewMin.y + (float)player.currentWinHeight);
 		auto& activeEnemies = inChestRoom ? chestRoomEnemies : enemies;
 		if (!isUiPause) {
 			for (auto& e : activeEnemies) {
