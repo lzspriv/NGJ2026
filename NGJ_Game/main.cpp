@@ -757,7 +757,7 @@ int main() {
 			static float bossEventTimer = 0.0f;
 			if (!bossEnemy->IsBossBulletBarrageActive() && !bossEnemy->IsBossIdleLockActive()) {
 				bossEventTimer += dt;
-				if (bossEventTimer >= 20.0f) {
+				if (bossEventTimer >= 10.0f) {
 					bossEventTimer = 0.0f;
 					if ((std::rand() % 100) < 50) {
 						bossEnemy->SetPosition(NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
@@ -775,8 +775,24 @@ int main() {
 			}
 
 			if (dungeonMap.IsBossLevel() && bossEnemy->GetIsDead()) {
-				isGameOver = true;
-			}
+    // 1. 啟用 Boss 關卡的過關傳送門（會在螢幕正中央畫出一個綠色方塊門）
+    dungeonMap.ActivateBossExitDoor();
+
+    // 2. 取得傳送門的座標（Map.cpp 中定義在實體螢幕的正中央）
+    float doorWorldX = initialMonW / 2.0f;
+    float doorWorldY = initialMonH / 2.0f;
+
+    // 3. 計算玩家與中央傳送門的距離
+    float distToDoor = sqrtf(powf(playerMapPos.x - doorWorldX, 2) + powf(playerMapPos.y - doorWorldY, 2));
+
+    // 4. 當玩家踩上傳送門（距離小於 25 像素）時，切換到下一關
+    if (distToDoor < 25.0f) {
+        dungeonMap.AdvanceLevel();
+        
+        // 重置召喚小怪的旗標，確保如果未來還有其他 Boss 關能正常運作
+        bossSummonResolved = false; 
+    }
+}
 		}
 
 		// 每 7 秒新增一隻隨機怪物（僅一般地圖，Boss關卡不刷）
