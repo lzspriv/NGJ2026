@@ -32,6 +32,7 @@ public:
     int maxHp;
     int currentHp;
     int score;
+    float attackRange;      // 攻擊距離（可以通過寶箱獎勵增加）
     std::vector<Bullet> bullets;
 
     AttackMode currentMode;
@@ -45,11 +46,9 @@ public:
     ~PlayerManager();
 
     void InitPlayer();
-    void HandleInput();
     // 僅處理攻擊輸入（不改變視窗或玩家位置）
     void ProcessCombatInput();
     // 更新攻擊相關（劍、子彈）計時與位置
     void UpdateCombat(float dt);
-    void UpdatePlayerAndWindow(float dt);
     void DrawPlayer();
 };

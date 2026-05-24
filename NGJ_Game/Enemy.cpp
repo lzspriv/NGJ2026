@@ -21,9 +21,6 @@ NGJ::Vec2 NGJ::Vec2::Normalized() const {
 	return NGJ::Vec2(x / len, y / len);
 }
 
-// 如果 header 宣告了這些運算子，通常它會在 header 中實作。
-// 不使用 non-member 運算子以避免與專案其他向量型別衝突
-
 namespace {
 	inline void SeedRandOnce() {
 		static bool seeded = false;
@@ -38,38 +35,72 @@ namespace {
 // Enemy methods
 // -------------------------------------------
 NGJ::Enemy::Enemy(const std::string& name_,
-			 int maxHP_,
-			 int attackPower_,
-			 int defense_,
-			 float moveSpeed_,
-			 float detectionRange_,
-			 float attackRange_,
-			 float attackCooldown_,
-			   const NGJ::Vec2& startPos)
+	int maxHP_,
+	int attackPower_,
+	int defense_,
+	float moveSpeed_,
+	float detectionRange_,
+	float attackRange_,
+	float attackCooldown_,
+	const NGJ::Vec2& startPos)
 	: name(name_),
-	  maxHP(maxHP_),
-	  currentHP(maxHP_),
-	  attackPower(attackPower_),
-	  defense(defense_),
-	  moveSpeed(moveSpeed_),
-	  detectionRange(detectionRange_),
-	  attackRange(attackRange_),
-	  attackCooldown(attackCooldown_),
-	  isDead(false),
-		position(startPos),
-	  patrolTarget(startPos),
-		state(NGJ::EnemyState::Idle),
-	  attackTimer(0.0f),
-	  patrolRadius(80.0f)
+	maxHP(maxHP_),
+	currentHP(maxHP_),
+	attackPower(attackPower_),
+	defense(defense_),
+	moveSpeed(moveSpeed_),
+	detectionRange(detectionRange_),
+	attackRange(attackRange_),
+	attackCooldown(attackCooldown_),
+	isDead(false),
+	position(startPos),
+	patrolTarget(startPos),
+	state(NGJ::EnemyState::Idle),
+	attackTimer(0.0f),
+	patrolRadius(80.0f),
+	canShoot(false),
+	bulletSpeed(220.0f),
+	bulletCooldown(1.2f),
+	bulletTimer(0.0f),
+	dashCooldownTimer(0.0f),
+	dashStopTimer(0.0f),
+	isDashing(false),
+	dashSpeed(460.0f),
+	dashTarget(startPos),
+	isBoss(false),
+	bossSummonTriggered(false),
+	bossPhaseTimer(0.0f),
+	bossAttackCycleTimer(0.0f),
+	bossBulletBarrageTimer(0.0f),
+	bossIdleLockTimer(0.0f),
+	bossBulletDamage(7),
+	bossMeleeDamage(10),
+	bossBarrageWaveCount(4),
+	bossBarrageWaveIndex(0),
+	bossBarrageWaveTimer(0.0f),
+	bossBulletBarrageActive(false),
+	bossSummonPending(false),
+	bossAtCenter(false),
+	bossBulletSpeed(140.0f),
+	bossBulletCooldown(0.35f),
+	bossBulletAngleOffset(0.0f),
+	assassinTeleportTimer(3.0f)
 {
 	SeedRandOnce();
 }
 
 NGJ::Enemy::~Enemy() {}
 
-void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition) {
+void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition, Map* map,
+	const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
 	if (isDead) {
 		state = EnemyState::Dead;
+		return;
+	}
+
+	if (isBoss) {
+		UpdateBoss(deltaTime, playerPosition, map, viewMin, viewMax);
+		UpdateBullets(deltaTime, map);
 		return;
 	}
 
@@ -77,18 +108,33 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition) {
 		attackTimer -= deltaTime;
 		if (attackTimer < 0.0f) attackTimer = 0.0f;
 	}
+	if (bulletTimer > 0.0f) {
+		bulletTimer -= deltaTime;
+		if (bulletTimer < 0.0f) bulletTimer = 0.0f;
+	}
+	if (dashCooldownTimer > 0.0f) {
+		dashCooldownTimer -= deltaTime;
+		if (dashCooldownTimer < 0.0f) dashCooldownTimer = 0.0f;
+	}
+	if (dashStopTimer > 0.0f) {
+		dashStopTimer -= deltaTime;
+		if (dashStopTimer < 0.0f) dashStopTimer = 0.0f;
+	}
+	if (name == "Assassin") {
+		assassinTeleportTimer -= deltaTime;
+	}
 
-	UpdateState(playerPosition);
+	UpdateState(playerPosition, map);
 
 	switch (state) {
 	case NGJ::EnemyState::Idle:
-		UpdateIdle(deltaTime);
+		UpdateIdle(deltaTime, map);
 		break;
 	case NGJ::EnemyState::Patrol:
-		UpdatePatrol(deltaTime);
+		UpdatePatrol(deltaTime, map);
 		break;
 	case NGJ::EnemyState::Chase:
-		UpdateChase(deltaTime, playerPosition);
+		UpdateChase(deltaTime, playerPosition, map, viewMin, viewMax);
 		break;
 	case NGJ::EnemyState::Attack:
 		UpdateAttack(deltaTime, playerPosition);
@@ -96,10 +142,11 @@ void NGJ::Enemy::Update(float deltaTime, const NGJ::Vec2& playerPosition) {
 	case NGJ::EnemyState::Dead:
 		break;
 	}
+
+	UpdateBullets(deltaTime, map);
 }
 
 void NGJ::Enemy::TakeDamage(int damage) {
-	// Apply damage after accounting for defense; ensure at least 1 damage is applied
 	if (isDead) return;
 	int net = damage - defense;
 	if (net < 1) net = 1;
@@ -113,6 +160,7 @@ void NGJ::Enemy::TakeDamage(int damage) {
 int NGJ::Enemy::Attack() {
 	if (!CanAttack() || isDead) return 0;
 	attackTimer = attackCooldown;
+	if (isBoss) return bossMeleeDamage;
 	return attackPower;
 }
 
@@ -129,57 +177,400 @@ void NGJ::Enemy::SetPosition(const NGJ::Vec2& newPosition) { position = newPosit
 int NGJ::Enemy::GetCurrentHP() const { return currentHP; }
 int NGJ::Enemy::GetMaxHP() const { return maxHP; }
 
-void NGJ::Enemy::UpdateState(const NGJ::Vec2& playerPosition) {
+void NGJ::Enemy::SetRangedAttack(bool enabled, float bulletSpeedValue, float bulletCooldownValue) {
+	canShoot = enabled;
+	if (bulletSpeedValue > 0.0f) bulletSpeed = bulletSpeedValue;
+	if (bulletCooldownValue > 0.05f) bulletCooldown = bulletCooldownValue;
+}
+
+bool NGJ::Enemy::IsRangedAttackEnabled() const { return canShoot; }
+const std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBullets() const { return bullets; }
+std::vector<NGJ::EnemyBullet>& NGJ::Enemy::GetBulletsMutable() { return bullets; }
+
+void NGJ::Enemy::ConfigureBossPhaseOne() {
+	isBoss = true;
+	maxHP = 100;
+	currentHP = 100;
+	defense = 1;
+	attackPower = bossMeleeDamage;
+	canShoot = true;
+	bulletSpeed = bossBulletSpeed;
+	bulletCooldown = bossBulletCooldown;
+	attackRange = 36.0f;
+	detectionRange = 9999.0f;
+	moveSpeed = 60.0f;
+	bossPhaseTimer = 0.0f;
+	bossAttackCycleTimer = 0.0f;
+	bossBulletBarrageTimer = 0.0f;
+	bossIdleLockTimer = 0.0f;
+	bossSummonTriggered = false;
+	bossBulletBarrageActive = false;
+	bossSummonPending = false;
+	bossAtCenter = false;
+	bossBarrageWaveIndex = 0;
+	bossBarrageWaveTimer = 0.0f;
+	ClearBossBullets();
+}
+
+void NGJ::Enemy::TriggerBossBarrage() {
+	bossBulletBarrageActive = true;
+	bossBulletBarrageTimer = 0.0f;
+	bossBarrageWaveIndex = 0;
+	bossBarrageWaveTimer = 3.0f;
+	bossAtCenter = true;
+	state = NGJ::EnemyState::Idle;
+}
+
+void NGJ::Enemy::TriggerBossSummon() {
+	bossSummonPending = true;
+}
+
+void NGJ::Enemy::TriggerBossIdleLock(float seconds) {
+	bossIdleLockTimer = seconds;
+	state = NGJ::EnemyState::Idle;
+}
+
+void NGJ::Enemy::ClearBossBullets() {
+	bullets.clear();
+}
+
+void NGJ::Enemy::SpawnBossBullets360() {
+	const int bulletCount = 24;
+	const float step = 360.0f / (float)bulletCount;
+	for (int i = 0; i < bulletCount; ++i) {
+		float angleDeg = bossBulletAngleOffset + step * (float)i;
+		float angleRad = angleDeg * 3.1415926535f / 180.0f;
+		EnemyBullet b;
+		b.position = position;
+		b.velocity = Vec2(std::cos(angleRad) * bossBulletSpeed, std::sin(angleRad) * bossBulletSpeed);
+		b.active = true;
+		bullets.push_back(b);
+	}
+}
+
+void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Map* map, const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
+	bossPhaseTimer += deltaTime;
+	if (bossIdleLockTimer > 0.0f) {
+		bossIdleLockTimer -= deltaTime;
+		if (bossIdleLockTimer < 0.0f) bossIdleLockTimer = 0.0f;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (bossSummonPending) {
+		bossSummonPending = false;
+		bossSummonTriggered = true;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (!bossSummonTriggered && currentHP <= (maxHP * 3) / 4) {
+		bossSummonTriggered = true;
+		state = NGJ::EnemyState::Idle;
+		return;
+	}
+
+	if (bossBulletBarrageActive) {
+		bossBulletBarrageTimer += deltaTime;
+		bossBarrageWaveTimer += deltaTime;
+		if (bossBarrageWaveIndex < bossBarrageWaveCount && bossBarrageWaveTimer >= 0.45f) {
+			bossBarrageWaveTimer = 0.0f;
+			SpawnBossBullets360();
+			bossBarrageWaveIndex++;
+		}
+		if (bossBarrageWaveIndex >= bossBarrageWaveCount) {
+			bossBulletBarrageActive = false;
+			ClearBossBullets();
+			TriggerBossIdleLock(5.0f);
+			bossAtCenter = false;
+		}
+		return;
+	}
+
+	float distToPlayer = NGJ::Vec2::Distance(position, playerPosition);
+	if (distToPlayer <= attackRange) {
+		state = NGJ::EnemyState::Attack;
+		if (CanAttack()) {
+			attackTimer = attackCooldown;
+		}
+	}
+	else if (!bossAtCenter) {
+		state = NGJ::EnemyState::Chase;
+		MoveTowards(playerPosition, deltaTime, map);
+	}
+	else {
+		state = NGJ::EnemyState::Idle;
+	}
+}
+
+void NGJ::Enemy::UpdateState(const NGJ::Vec2& playerPosition, Map* map) {
 	if (isDead) { state = NGJ::EnemyState::Dead; return; }
 	float distToPlayer = NGJ::Vec2::Distance(position, playerPosition);
+
 	if (distToPlayer <= attackRange) { state = NGJ::EnemyState::Attack; return; }
-	if (distToPlayer <= detectionRange) { state = NGJ::EnemyState::Chase; return; }
+
+	// 【智商升級 1：仇恨記憶機制】
+	// 如果怪物已經處於「追擊 (Chase)」狀態，牠的視野（偵測距離）會自動放大 3 倍！
+	// 這樣玩家一旦被盯上，就很難輕易甩掉牠，除非跑得非常非常遠。
+	float currentDetectRange = (state == NGJ::EnemyState::Chase) ? (detectionRange * 3.0f) : detectionRange;
+
+	if (distToPlayer <= currentDetectRange) { state = NGJ::EnemyState::Chase; return; }
+
 	float distToPatrol = NGJ::Vec2::Distance(position, patrolTarget);
 	if (distToPatrol > 5.0f) state = NGJ::EnemyState::Patrol; else state = NGJ::EnemyState::Idle;
 }
 
-void NGJ::Enemy::UpdateIdle(float /*deltaTime*/) {
-	if (std::rand() % 2000 == 0) ChooseNewPatrolTarget();
+void NGJ::Enemy::UpdateIdle(float /*deltaTime*/, Map* map) {
+	// 提高發呆時尋找新巡邏點的機率，讓怪物更頻繁亂晃 (120 幀大約 2 秒)
+	if (std::rand() % 120 == 0) ChooseNewPatrolTarget(map);
 }
 
-void NGJ::Enemy::UpdatePatrol(float deltaTime) {
+void NGJ::Enemy::UpdatePatrol(float deltaTime, Map* map) {
 	float dist = NGJ::Vec2::Distance(position, patrolTarget);
-	if (dist <= 4.0f) ChooseNewPatrolTarget(); else MoveTowards(patrolTarget, deltaTime);
+	if (dist <= 4.0f) ChooseNewPatrolTarget(map); else MoveTowards(patrolTarget, deltaTime, map);
 }
 
-void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition) { MoveTowards(playerPosition, deltaTime); }
+void NGJ::Enemy::UpdateChase(float deltaTime, const NGJ::Vec2& playerPosition, Map* map,
+	const NGJ::Vec2* viewMin, const NGJ::Vec2* viewMax) {
+	// Assassin 特性：移動慢，但每 1~2 秒瞬移到玩家背後
+	if (name == "Assassin") {
+		if (assassinTeleportTimer <= 0.0f) {
+			bool assassinInView = false;
+			if (viewMin && viewMax) {
+				assassinInView = (position.x >= viewMin->x && position.x <= viewMax->x &&
+					position.y >= viewMin->y && position.y <= viewMax->y);
+			}
 
-void NGJ::Enemy::UpdateAttack(float /*deltaTime*/, const NGJ::Vec2& /*playerPosition*/) {
-	// Attack action is triggered externally via Attack()
+			if (assassinInView) {
+				NGJ::Vec2 dirToPlayer = playerPosition.Sub(position).Normalized();
+				if (std::abs(dirToPlayer.x) > 1e-6f || std::abs(dirToPlayer.y) > 1e-6f) {
+					float backDistance = attackRange - 2.0f;
+					if (backDistance < 6.0f) backDistance = 6.0f;
+					NGJ::Vec2 teleportTarget = playerPosition.Add(dirToPlayer.Mul(backDistance));
+
+					bool canTeleport = true;
+					if (map) {
+						float r = 12.0f;
+						float sideR = r * 0.7f;
+						if (map->IsWall(teleportTarget.x, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x - sideR, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x + sideR, teleportTarget.y) ||
+							map->IsWall(teleportTarget.x, teleportTarget.y - sideR) ||
+							map->IsWall(teleportTarget.x, teleportTarget.y + sideR)) {
+							canTeleport = false;
+						}
+					}
+
+					if (canTeleport) {
+						position = teleportTarget;
+						state = NGJ::EnemyState::Attack;
+						attackTimer = 0.3f; // 瞬移後延遲 0.3 秒再能攻擊
+					}
+				}
+			}
+
+			assassinTeleportTimer = 3.0f;
+			return;
+		}
+	}
+
+	// Wolf 特性：中距離時有機率快速滑行到玩家前方，接著停頓 0.3 秒
+	if (name == "Wolf") {
+		if (dashStopTimer > 0.0f) return;
+
+		if (isDashing) {
+			NGJ::Vec2 toTarget = dashTarget.Sub(position);
+			float remain = NGJ::Vec2::Distance(position, dashTarget);
+			if (remain <= 3.0f) {
+				position = dashTarget;
+				isDashing = false;
+				dashStopTimer = 0.3f;
+				return;
+			}
+
+			NGJ::Vec2 dir = toTarget.Normalized();
+			float step = dashSpeed * deltaTime;
+			if (step > remain) step = remain;
+			NGJ::Vec2 nextPos = position.Add(dir.Mul(step));
+
+			bool blocked = false;
+			if (map) {
+				float r = 12.0f;
+				float sideR = r * 0.7f;
+				if (map->IsWall(nextPos.x + r, nextPos.y) || map->IsWall(nextPos.x - r, nextPos.y) ||
+					map->IsWall(nextPos.x, nextPos.y + r) || map->IsWall(nextPos.x, nextPos.y - r) ||
+					map->IsWall(nextPos.x + sideR, nextPos.y + sideR) || map->IsWall(nextPos.x - sideR, nextPos.y - sideR)) {
+					blocked = true;
+				}
+			}
+
+			if (blocked) {
+				isDashing = false;
+				dashCooldownTimer = 1.0f;
+			}
+			else {
+				position = nextPos;
+			}
+			return;
+		}
+
+		float dist = NGJ::Vec2::Distance(position, playerPosition);
+		if (dist > 90.0f && dist < 260.0f && dashCooldownTimer <= 0.0f) {
+			// 約 12% 機率觸發衝刺
+			if ((std::rand() % 100) < 12) {
+				NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+				if (std::abs(dir.x) > 1e-6f || std::abs(dir.y) > 1e-6f) {
+					// 目標點放在玩家前方，保留距離避免直接貼到玩家
+					float keepDistance = attackRange + 10.0f;
+					dashTarget = playerPosition.Sub(dir.Mul(keepDistance));
+
+					bool canDash = true;
+					if (map) {
+						float r = 12.0f;
+						float sideR = r * 0.7f;
+						if (map->IsWall(dashTarget.x, dashTarget.y) ||
+							map->IsWall(dashTarget.x - sideR, dashTarget.y) ||
+							map->IsWall(dashTarget.x + sideR, dashTarget.y) ||
+							map->IsWall(dashTarget.x, dashTarget.y - sideR) ||
+							map->IsWall(dashTarget.x, dashTarget.y + sideR)) {
+							canDash = false;
+						}
+					}
+
+					if (canDash) {
+						isDashing = true;
+						dashCooldownTimer = 2.2f;
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	MoveTowards(playerPosition, deltaTime, map);
 }
 
-void NGJ::Enemy::MoveTowards(const NGJ::Vec2& target, float deltaTime) {
-	NGJ::Vec2 dir = NGJ::Vec2(target.x - position.x, target.y - position.y);
-	float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-	if (dist <= 1e-4f) return;
-	NGJ::Vec2 norm = NGJ::Vec2(dir.x / dist, dir.y / dist);
-	double moveDist_d = std::fma((double)moveSpeed, (double)deltaTime, 0.0);
-	float moveDist = (float)moveDist_d;
-	if (moveDist >= dist) {
-		position = target;
-	} else {
-		float newX = (float)std::fma((double)norm.x, (double)moveDist, (double)position.x);
-		float newY = (float)std::fma((double)norm.y, (double)moveDist, (double)position.y);
-		position = NGJ::Vec2(newX, newY);
+void NGJ::Enemy::UpdateAttack(float /*deltaTime*/, const NGJ::Vec2& playerPosition) {
+	if (isBoss) {
+		if (!canShoot || bulletTimer > 0.0f) return;
+		NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+		if (std::abs(dir.x) <= 1e-6f && std::abs(dir.y) <= 1e-6f) return;
+		EnemyBullet b;
+		b.position = position;
+		b.velocity = dir.Mul(bulletSpeed);
+		b.active = true;
+		bullets.push_back(b);
+		bulletTimer = bulletCooldown;
+		return;
+	}
+
+	if (!canShoot || bulletTimer > 0.0f) return;
+
+	NGJ::Vec2 dir = playerPosition.Sub(position).Normalized();
+	if (std::abs(dir.x) <= 1e-6f && std::abs(dir.y) <= 1e-6f) return;
+
+	EnemyBullet b;
+	b.position = position;
+	b.velocity = dir.Mul(bulletSpeed);
+	b.active = true;
+	bullets.push_back(b);
+	bulletTimer = bulletCooldown;
+}
+
+void NGJ::Enemy::UpdateBullets(float deltaTime, Map* map) {
+	for (auto& b : bullets) {
+		if (!b.active) continue;
+		b.position = b.position.Add(b.velocity.Mul(deltaTime));
+
+		if (map && (map->IsWall(b.position.x, b.position.y) || map->IsBossObstacleAt(b.position.x, b.position.y))) {
+			b.active = false;
+		}
 	}
 }
 
-void NGJ::Enemy::ChooseNewPatrolTarget() {
-	// 計算一個 0..1 的隨機比例再轉成角度
-	double fracA = (double)(std::rand() % 3600) / 3600.0;
-	double ang_d = std::fma(fracA, 2.0 * 3.14159265358979323846, 0.0);
-	double fracR = (double)(std::rand() % 1000) / 1000.0;
-	double r_d = std::fma(fracR, (double)patrolRadius, 0.0);
-	float ang = (float)ang_d;
-	float r = (float)r_d;
-	double cosv = std::cos(ang);
-	double sinv = std::sin(ang);
-	float nx = (float)std::fma(cosv, r, (double)position.x);
-	float ny = (float)std::fma(sinv, r, (double)position.y);
-	patrolTarget = NGJ::Vec2(nx, ny);
+void NGJ::Enemy::MoveTowards(const NGJ::Vec2& target, float deltaTime, Map* map) {
+	NGJ::Vec2 dir = NGJ::Vec2(target.x - position.x, target.y - position.y);
+	float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+	if (dist <= 1e-4f) return;
+
+	NGJ::Vec2 norm = NGJ::Vec2(dir.x / dist, dir.y / dist);
+	float moveDist = moveSpeed * deltaTime;
+	if (moveDist >= dist) moveDist = dist;
+
+	float r = 12.0f;           // 怪物的物理碰撞半徑
+	float sideR = r * 0.7f;    // 稍微縮小側邊判定，讓怪物更容易滑進狹窄的走廊
+
+	// 獨立檢查 X 與 Y 軸前方是否有牆壁
+	bool canMoveX = true;
+	if (map) {
+		float checkX = position.x + norm.x * moveDist + (norm.x > 0 ? r : -r);
+		if (map->IsWall(checkX, position.y - sideR) || map->IsWall(checkX, position.y + sideR)) canMoveX = false;
+	}
+
+	bool canMoveY = true;
+	if (map) {
+		float checkY = position.y + norm.y * moveDist + (norm.y > 0 ? r : -r);
+		if (map->IsWall(position.x - sideR, checkY) || map->IsWall(position.x + sideR, checkY)) canMoveY = false;
+	}
+
+	bool movedX = false;
+	bool movedY = false;
+
+	// 基礎直線移動
+	if (canMoveX) { position.x += norm.x * moveDist; movedX = true; }
+	if (canMoveY) { position.y += norm.y * moveDist; movedY = true; }
+
+	// 【智商升級 2：人工貼牆繞行演算法 (Wall Sliding)】
+	if (state == NGJ::EnemyState::Chase) {
+		if (!movedX && movedY) {
+			// X 軸撞牆了，但 Y 軸沒撞：將原本要走 X 的動能，全部轉換到 Y 軸，實作全速貼牆滑行
+			float extraY = (dir.y >= 0) ? std::abs(norm.x * moveDist) : -std::abs(norm.x * moveDist);
+			// 如果完全水平撞牆，隨機決定往上繞還是往下繞
+			if (dir.y == 0) extraY = (std::rand() % 2 == 0) ? std::abs(norm.x * moveDist) : -std::abs(norm.x * moveDist);
+
+			float checkY = position.y + extraY + (extraY > 0 ? r : -r);
+			if (map && !map->IsWall(position.x - sideR, checkY) && !map->IsWall(position.x + sideR, checkY)) {
+				position.y += extraY;
+			}
+		}
+		else if (movedX && !movedY) {
+			// Y 軸撞牆了，但 X 軸沒撞：轉移速度繞路
+			float extraX = (dir.x >= 0) ? std::abs(norm.y * moveDist) : -std::abs(norm.y * moveDist);
+			if (dir.x == 0) extraX = (std::rand() % 2 == 0) ? std::abs(norm.y * moveDist) : -std::abs(norm.y * moveDist);
+
+			float checkX = position.x + extraX + (extraX > 0 ? r : -r);
+			if (map && !map->IsWall(checkX, position.y - sideR) && !map->IsWall(checkX, position.y + sideR)) {
+				position.x += extraX;
+			}
+		}
+	}
+
+	// 如果是在巡邏狀態且四處碰壁，立刻重新選一個方向
+	if ((!movedX || !movedY) && state == NGJ::EnemyState::Patrol) {
+		ChooseNewPatrolTarget(map);
+	}
+}
+
+void NGJ::Enemy::ChooseNewPatrolTarget(Map* map) {
+	// 嘗試找尋一個不是牆壁的目標點 (最多嘗試 10 次)
+	for (int i = 0; i < 10; i++) {
+		double fracA = (double)(std::rand() % 3600) / 3600.0;
+		double ang_d = std::fma(fracA, 2.0 * 3.14159265358979323846, 0.0);
+		double fracR = (double)(std::rand() % 1000) / 1000.0;
+		double r_d = std::fma(fracR, (double)patrolRadius, 0.0);
+		float ang = (float)ang_d;
+		float r = (float)r_d;
+		double cosv = std::cos(ang);
+		double sinv = std::sin(ang);
+		float nx = (float)std::fma(cosv, r, (double)position.x);
+		float ny = (float)std::fma(sinv, r, (double)position.y);
+
+		// 確保選出的新巡邏點不在牆壁內
+		if (map && !map->IsWall(nx, ny)) {
+			patrolTarget = NGJ::Vec2(nx, ny);
+			return;
+		}
+	}
+	// 如果嘗試 10 次都失敗(例如被關在死胡同)，原地放棄
+	patrolTarget = position;
 }
