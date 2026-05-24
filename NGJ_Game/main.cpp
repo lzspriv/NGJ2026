@@ -407,8 +407,8 @@ int main() {
 			healthOrbs.clear();
 
 			// 找到 if (dungeonMap.GetCurrentLevel() != lastLevel) 區塊內的 Boss 生成程式碼
-			if (dungeonMap.IsBossLevel()) {
-				// 移除 monLeft 與 monTop，直接使用 monW / 2 與 monH / 2
+			if (dungeonMap.GetCurrentLevel() % 5 == 0) {
+				// Boss 關卡生成：召喚 Boss
 				enemies.emplace_back("GIANT BOSS", 100, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 				enemies.back().ConfigureBossPhaseOne();
 				enemies.back().SetPosition(NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
@@ -729,22 +729,24 @@ int main() {
 			if (selectedReward >= 0) {
 				RewardType chosenType = currentRewards[selectedReward].type;
 
+				int levelBonus = (int)(dungeonMap.GetCurrentLevel() * 1.35f);
+
 				switch (chosenType) {
 				case RewardType::MAX_HP:
-					player.maxHp += 20;
-					player.currentHp = player.maxHp; // 補滿血
+					player.maxHp += (20 + levelBonus); // 血量上限加成
+					player.currentHp = player.maxHp;
 					break;
 				case RewardType::SPEED:
-					playerSpeed += 1.5f;
+					playerSpeed += (1.5f + (levelBonus * 0.1f)); // 速度加成
 					break;
 				case RewardType::ATTACK_RANGE:
-					player.attackRange += 15.0f;
+					player.attackRange += (15.0f + levelBonus);
 					break;
 				case RewardType::SWORD_DMG:
-					currentSwordDamage += 3;
+					currentSwordDamage += (3 + levelBonus);
 					break;
 				case RewardType::BULLET_DMG:
-					currentBulletDamage += 2;
+					currentBulletDamage += (2 + levelBonus);
 					break;
 				}
 
@@ -871,31 +873,29 @@ int main() {
 					}
 				}
 			}
+
+			// 清除障礙物邏輯
 			if (bossBarragePrepared && !bossEnemy->IsBossBulletBarrageActive() && !bossEnemy->IsBossIdleLockActive()) {
 				dungeonMap.ClearBossObstacles();
 				bossObstacleSpawned = false;
 				bossBarragePrepared = false;
 			}
 
+			// Boss 死亡後的傳送門邏輯
 			if (dungeonMap.IsBossLevel() && bossEnemy->GetIsDead()) {
-    // 1. 啟用 Boss 關卡的過關傳送門（會在螢幕正中央畫出一個綠色方塊門）
-    dungeonMap.ActivateBossExitDoor();
+				dungeonMap.ActivateBossExitDoor();
 
-    // 2. 取得傳送門的座標（Map.cpp 中定義在實體螢幕的正中央）
-    float doorWorldX = initialMonW / 2.0f;
-    float doorWorldY = initialMonH / 2.0f;
+				float doorWorldX = initialMonW / 2.0f; // 假設門在螢幕正中央
+				float doorWorldY = initialMonH / 2.0f;
 
-    // 3. 計算玩家與中央傳送門的距離
-    float distToDoor = sqrtf(powf(playerMapPos.x - doorWorldX, 2) + powf(playerMapPos.y - doorWorldY, 2));
+				// 計算玩家距離 (注意：playerMapPos 是你在 main.cpp 前面算好的變數)
+				float distToDoor = sqrtf(powf(playerMapPos.x - doorWorldX, 2) + powf(playerMapPos.y - doorWorldY, 2));
 
-    // 4. 當玩家踩上傳送門（距離小於 25 像素）時，切換到下一關
-    if (distToDoor < 25.0f) {
-        dungeonMap.AdvanceLevel();
-        
-        // 重置召喚小怪的旗標，確保如果未來還有其他 Boss 關能正常運作
-        bossSummonResolved = false; 
-    }
-}
+				if (distToDoor < 25.0f) {
+					dungeonMap.AdvanceLevel();
+					bossSummonResolved = false; // 重置狀態以便下一關
+				}
+			}
 		}
 
 		// 每 7 秒新增一隻隨機怪物（僅一般地圖，Boss關卡不刷）

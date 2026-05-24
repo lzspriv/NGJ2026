@@ -11,7 +11,7 @@ PlayerManager::~PlayerManager() {
 
 void PlayerManager::InitPlayer() {
     playerPos = { 200.0f, 200.0f };
-    playerSpeed = 5.0f;
+    playerSpeed = 3.0f;
     maxHp = 100;
     currentHp = maxHp;
     score = 0;

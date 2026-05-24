@@ -25,7 +25,7 @@ void Map::InitLevel(int level) {
 	keysCollected = 0;
 	doorUnlocked = false;
 	bossExitDoorActive = false;
-
+	bool isBossStage = (currentLevel % 5 == 0);
 	// 【新增】：確保每關一開始絕對清空上一關殘留的 Boss 障礙物
 	ClearBossObstacles();
 
@@ -47,7 +47,7 @@ void Map::InitLevel(int level) {
 	int startTileY = (int)(playerStartPos.y / tileHeight);
 
 	// 3. 生成地形
-	if (IsBossLevel()) {
+	if (isBossStage) {
 		for (int y = 0; y < mapRows; y++) {
 			for (int x = 0; x < mapCols; x++) {
 				if (x == 0 || y == 0 || x == mapCols - 1 || y == mapRows - 1) {
@@ -87,7 +87,7 @@ void Map::InitLevel(int level) {
 	}
 
 	// 4. 放置物件：Boss 第五層不生成鑰匙、門與寶箱
-	if (!IsBossLevel()) {
+	if (!isBossStage) {
 		for (int i = 0; i < 3; i++) {
 			keyPositions.push_back(GetRandomFreePosition(2));
 			keyCollected.push_back(false);
