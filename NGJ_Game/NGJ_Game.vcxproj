@@ -157,8 +157,18 @@
     <ClInclude Include="Player.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="assets\assassin.png" />
+    <Image Include="assets\bat.png" />
+    <Image Include="assets\boss.png" />
+    <Image Include="assets\buff.png" />
+    <Image Include="assets\Door_Bonus.png" />
+    <Image Include="assets\Door_Closed.png" />
+    <Image Include="assets\Door_Opened.png" />
+    <Image Include="assets\goblin.png" />
     <Image Include="assets\key.png" />
     <Image Include="assets\player.png" />
+    <Image Include="assets\treasureChest.png" />
+    <Image Include="assets\wolf.png" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="assets\bgm_boss.mp3" />

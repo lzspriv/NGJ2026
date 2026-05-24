@@ -84,6 +84,36 @@
     <Image Include="assets\key.png">
       <Filter>資源檔</Filter>
     </Image>
+    <Image Include="assets\boss.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\buff.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\assassin.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\bat.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Closed.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Opened.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\goblin.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\wolf.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\treasureChest.png">
+      <Filter>資源檔</Filter>
+    </Image>
+    <Image Include="assets\Door_Bonus.png">
+      <Filter>資源檔</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Font Include="assets\mainfont.otf" />

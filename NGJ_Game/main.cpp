@@ -182,7 +182,11 @@ int main() {
 		//============== draw entity(key, boss)  ==============
 		AssetManager::DrawEntityAnimated(AssetManager::GetItemKeyTexture(),Vector2(50,50),7 ,1.0f,0.1f,WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetBossTexture(), Vector2(100, 100), 4, 3.0f, 0.1f, WHITE);
-		AssetManager::DrawEntityAnimated(AssetManager::GetOpenDoorTexture(), Vector2(200, 200), 1, 3.0f, 100, WHITE);
+
+		AssetManager::DrawEntityAnimated(AssetManager::GetOpenDoorTexture(), Vector2(100, 400), 1, 3.0f, 100, WHITE);
+		AssetManager::DrawEntityAnimated(AssetManager::GetCloseDoorTexture(), Vector2(200, 400), 1, 3.0f, 100, WHITE);
+		AssetManager::DrawEntityAnimated(AssetManager::GetBonusDoorTexture(), Vector2(300, 400), 1, 3.0f, 100, WHITE);
+		AssetManager::DrawEntityAnimated(AssetManager::GetTreasureChestTexture(), Vector2(400, 400), 1, 3.0f, 100, WHITE);
 
 		AssetManager::DrawEntityAnimated(AssetManager::GetBatTexture(), Vector2(100, 250), 4, 3.0f, 0.1f, WHITE);
 		AssetManager::DrawEntityAnimated(AssetManager::GetWolfTexture(), Vector2(200, 250), 4, 3.0f, 0.1f, WHITE);

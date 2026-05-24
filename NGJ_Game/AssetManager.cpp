@@ -18,11 +18,12 @@ static Texture2D assassinTexture;
 
 static Texture2D bossTexture;//check
 static Texture2D itemKeyTexture;//check
+static Texture2D treasureChestTexture;
 
 static Texture2D closeDoorTexture;//ToDo
 static Texture2D openDoorTexture;//ToDo
 
-static Texture2D extraRoomTexture;//ToDo
+static Texture2D bonusDoorTexture;//ToDo
 
 static Texture2D buffItemTexture;//check
 
@@ -67,8 +68,12 @@ void AssetManager::LoadAllAssets() {
     itemKeyTexture = LoadTexture("assets/key.png");
     buffItemTexture = LoadTexture("assets/buff.png");
 
+    treasureChestTexture = LoadTexture("assets/treasureChest.png");;
+
 	openDoorTexture = LoadTexture("assets/Door_Opened.png");
 	closeDoorTexture = LoadTexture("assets/Door_Closed.png");
+
+    bonusDoorTexture = LoadTexture("assets/Door_Bonus.png");
 
     // 載入聲音串流
     bgmMenu = LoadMusicStream("assets/bgm_menu.mp3");
@@ -104,6 +109,7 @@ void AssetManager::UnloadAllAssets() {
 
     UnloadTexture(openDoorTexture);
     UnloadTexture(closeDoorTexture);
+    UnloadTexture(bonusDoorTexture);
 
     UnloadTexture(batTexture);
     UnloadTexture(wolfTexture);
@@ -141,9 +147,10 @@ Texture2D AssetManager::GetAssassinTexture() { return assassinTexture; }
 
 Texture2D AssetManager::GetOpenDoorTexture() { return openDoorTexture; };
 Texture2D AssetManager::GetCloseDoorTexture() { return closeDoorTexture; };
-
+Texture2D AssetManager::GetBonusDoorTexture() { return bonusDoorTexture; };
 
 Texture2D AssetManager::GetItemKeyTexture() { return itemKeyTexture; }
+Texture2D AssetManager::GetTreasureChestTexture() { return treasureChestTexture; }
 Texture2D AssetManager::GetBuffItemTexture() { return buffItemTexture; }
 
 Music AssetManager::GetBgmMenu() { return bgmMenu; }
