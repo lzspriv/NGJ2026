@@ -141,6 +141,32 @@ int main() {
 	Vector2 lastWinPos = GetWindowPosition();
 	int lastMonitor = GetCurrentMonitor();
 
+	// ==========================================
+	// 動態能力值與獎勵池系統
+	// ==========================================
+	int currentBulletDamage = 2; // 原本是常數，現在變成可升級變數
+	int currentSwordDamage = 4;
+
+	enum class RewardType { MAX_HP, SPEED, ATTACK_RANGE, SWORD_DMG, BULLET_DMG };
+
+	struct RewardOption {
+		RewardType type;
+		const char* text;
+		Color color;
+	};
+
+	// 總獎勵池（可以隨便擴充）
+	std::vector<RewardOption> rewardPool = {
+		{ RewardType::MAX_HP, "Max HP +20 & Heal", RED },
+		{ RewardType::SPEED, "Movement Speed +1.5", SKYBLUE },
+		{ RewardType::ATTACK_RANGE, "Melee Range +15", ORANGE },
+		{ RewardType::SWORD_DMG, "Sword Damage +3", YELLOW },
+		{ RewardType::BULLET_DMG, "Bullet Damage +2", PURPLE }
+	};
+
+	// 用來存儲當下被隨機抽出來的 3 個選項
+	std::vector<RewardOption> currentRewards(3);
+
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
 		bool isUiPause = showRewardUI || showChestEntryPrompt;
@@ -509,6 +535,16 @@ int main() {
 				showRewardUI = true;
 				rewardUITimer = 0.0;
 				selectedReward = -1;
+
+				// 【新增】：隨機打亂獎勵池，抽出前 3 個不重複的獎勵
+				std::vector<RewardOption> poolCopy = rewardPool;
+				for (int i = 0; i < poolCopy.size(); i++) {
+					int swapIdx = std::rand() % poolCopy.size();
+					std::swap(poolCopy[i], poolCopy[swapIdx]);
+				}
+				for (int i = 0; i < 3; i++) {
+					currentRewards[i] = poolCopy[i];
+				}
 			}
 		}
 
@@ -516,31 +552,34 @@ int main() {
 		if (showRewardUI && currentChestIndex >= 0) {
 			rewardUITimer += dt;
 
-			// 用數字鍵 1/2/3 選擇獎勵，或用方向鍵 + Enter
-			if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_KP_1)) {
-				selectedReward = 0;  // 血量上限 +20
-			} else if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_KP_2)) {
-				selectedReward = 1;  // 移動速度 +1
-			} else if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_KP_3)) {
-				selectedReward = 2;  // 攻擊距離 +10
-			}
+			if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_KP_1)) selectedReward = 0;
+			else if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_KP_2)) selectedReward = 1;
+			else if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_KP_3)) selectedReward = 2;
 
 			// 如果選擇了獎勵，套用並關閉 UI
 			if (selectedReward >= 0) {
-					switch (selectedReward) {
-					case 0:  // 增加血量上限
-						player.maxHp += 20;
-						player.currentHp = player.maxHp;
-						break;
-					case 1:  // 增加移動速度
-						playerSpeed += 1.0f;
-						break;
-					case 2:  // 增加攻擊距離
-						player.attackRange += 10.0f;
-						break;
+				RewardType chosenType = currentRewards[selectedReward].type;
+
+				switch (chosenType) {
+				case RewardType::MAX_HP:
+					player.maxHp += 20;
+					player.currentHp = player.maxHp; // 補滿血
+					break;
+				case RewardType::SPEED:
+					playerSpeed += 1.5f;
+					break;
+				case RewardType::ATTACK_RANGE:
+					player.attackRange += 15.0f;
+					break;
+				case RewardType::SWORD_DMG:
+					currentSwordDamage += 3;
+					break;
+				case RewardType::BULLET_DMG:
+					currentBulletDamage += 2;
+					break;
 				}
 
-				// 標記寶箱已打開
+				// 標記寶箱已打開並重置狀態
 				dungeonMap.OpenChest(currentChestIndex);
 				showRewardUI = false;
 				inChestRoom = false;
@@ -554,7 +593,6 @@ int main() {
 				wasSwordActive = false;
 			}
 
-			// 如果超過 10 秒沒選擇，自動關閉
 			if (rewardUITimer > 10.0) {
 				showRewardUI = false;
 				currentChestIndex = -1;
@@ -623,8 +661,8 @@ int main() {
 		}
 
 		// 玩家攻擊命中判定：子彈與近戰揮砍命中敵人時扣血
-		const int bulletDamage = 2;
-		const int swordDamage = 4;
+		//const int bulletDamage = 2;
+		//const int swordDamage = 4;
 		const float enemyHitRadius = 12.0f;
 
 		if (!player.sword.active && wasSwordActive) {
@@ -704,7 +742,7 @@ int main() {
 				float bdy = bulletWorld.y - enemyPos.y;
 				float d = sqrtf(bdx * bdx + bdy * bdy);
 				if (d <= enemyHitRadius + 4.0f) {
-					e.TakeDamage(bulletDamage);
+					e.TakeDamage(currentBulletDamage);
 					b.active = false;
 					break;
 				}
@@ -735,7 +773,7 @@ int main() {
 				float sdy = swordCenterWorld.y - enemyPos.y;
 				float d = sqrtf(sdx * sdx + sdy * sdy);
 				if (d <= player.attackRange + enemyHitRadius) {
-					e.TakeDamage(swordDamage);
+					e.TakeDamage(currentSwordDamage);
 					swordHitThisSwing[ei] = true;
 				}
 			}
@@ -884,12 +922,15 @@ int main() {
 				};
 				Color rewardColors[] = { RED, BLUE, ORANGE };
 
+				// 三個隨機抽出的獎勵選項
 				for (int i = 0; i < 3; i++) {
 					int optionY = uiY + 50 + i * 40;
-					Color optColor = (selectedReward == i) ? YELLOW : rewardColors[i];
+					Color optColor = (selectedReward == i) ? YELLOW : currentRewards[i].color;
 					DrawRectangle(uiX + 20, optionY, uiWidth - 40, 35, Fade(BLACK, 0.3f));
 					DrawRectangleLines(uiX + 20, optionY, uiWidth - 40, 35, optColor);
-					DrawText(rewardNames[i], uiX + 35, optionY + 8, 14, optColor);
+
+					// 顯示選項數字與動態獎勵文字
+					DrawText(TextFormat("[%d] %s", i + 1, currentRewards[i].text), uiX + 35, optionY + 8, 14, optColor);
 				}
 
 				DrawText("Selecting in...", uiX + 20, uiY + 180, 10, GRAY);
