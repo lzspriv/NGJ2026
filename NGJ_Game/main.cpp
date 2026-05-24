@@ -35,8 +35,16 @@ int main() {
 		SetWindowPosition(newX, newY);
 	}
 
-	// 初始化地圖系統
-	Map dungeonMap(currentWidth, currentHeight);
+	// 取得扣除 Windows 底部工作列後的真實可用螢幕尺寸
+	int initialMonW = GetMonitorWidth(GetCurrentMonitor());
+	int initialMonH = GetMonitorHeight(GetCurrentMonitor());
+	int tmpL = 0, tmpT = 0;
+	if (!GetMonitorWorkAreaForWindow(GetWindowHandle(), tmpL, tmpT, initialMonW, initialMonH)) {
+		GetMonitorRectForWindow(GetWindowHandle(), tmpL, tmpT, initialMonW, initialMonH);
+	}
+
+	// 初始化地圖系統 (把螢幕真實大小餵給它)
+	Map dungeonMap(currentWidth, currentHeight, initialMonW, initialMonH);
 
 	// 實例化玩家管理器（僅用於戰鬥/繪製相關）
 	PlayerManager player;
@@ -223,6 +231,10 @@ int main() {
 			prevMonitor = monitor;
 			lastWinPos = winPos;
 			lastMonitor = monitor;
+
+			// 【新增】告訴地圖螢幕大小變了！
+			dungeonMap.SetMonitorSize(monW, monH);
+
 		}
 		// 檢測同一螢幕內的視窗拖曳作弊
 		else if (monitor == lastMonitor && (winPos.x != lastWinPos.x || winPos.y != lastWinPos.y)) {

@@ -30,9 +30,16 @@ private:
     // ---- 內部演算法 ----
     bool IsMapConnected();                  // 驗證隨機迷宮連通性
 
+    int monitorW;
+    int monitorH;
+
 public:
-    Map(int screenWidth, int screenHeight);
+    // 【修改】建構子現在需要接收螢幕的真實寬高
+    Map(int screenWidth, int screenHeight, int monW, int monH);
     ~Map();
+
+    // 【新增】當玩家把視窗拖到另一個不同大小的螢幕時，更新地圖認知
+    void SetMonitorSize(int w, int h) { monitorW = w; monitorH = h; }
 
     // ---- 每幀更新與繪製 ----
     void Update(Vector2 playerMapPos);
@@ -64,7 +71,7 @@ public:
     int GetTotalHeight() const { return mapRows * tileHeight; }
 
     // ---- 怪物 AI 分支需要的 Helper 函式 ----
-    Vector2 GetRandomFreePosition();
+    Vector2 GetRandomFreePosition(int marginTiles = 1);
     bool CheckWallCollision(Vector2 pos, Vector2 size);
 };
 

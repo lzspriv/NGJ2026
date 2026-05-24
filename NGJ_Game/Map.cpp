@@ -4,9 +4,12 @@
 #include <ctime>
 #include <algorithm> // 給 std::min 使用
 
-Map::Map(int screenWidth, int screenHeight) {
+// 【修改】接收螢幕尺寸
+Map::Map(int screenWidth, int screenHeight, int monW, int monH) {
 	tileWidth = 50;
 	tileHeight = 50;
+	monitorW = monW;
+	monitorH = monH;
 	InitLevel(1); // 遊戲從第 1 關開始
 }
 
@@ -21,9 +24,11 @@ void Map::InitLevel(int level) {
 	keysCollected = 0;
 	doorUnlocked = false;
 
-	// 1. 動態擴大地圖尺寸：關卡越高，地圖越大！(最大限制在 80x60，避免太卡)
-	mapCols = 30 + std::min(level * 4, 50);
-	mapRows = 20 + std::min(level * 3, 40);
+	// 1. 地圖大小嚴格綁定為螢幕大小，不再無限擴張！
+	mapCols = monitorW / tileWidth;
+	mapRows = monitorH / tileHeight;
+	if (mapCols < 10) mapCols = 10; // 防呆
+	if (mapRows < 10) mapRows = 10;
 
 	grid.assign(mapRows, std::vector<int>(mapCols, 0));
 	keyPositions.clear();
@@ -31,28 +36,27 @@ void Map::InitLevel(int level) {
 	chestPositions.clear();
 	chestOpened.clear();
 
-	// 固定起點在左上角安全區
-	playerStartPos = { tileWidth * 2.5f, tileHeight * 2.5f };
+	// 2. 玩家出生點嚴格鎖定在「螢幕實體正中央」
+	playerStartPos = { monitorW / 2.0f, monitorH / 2.0f };
+	int startTileX = (int)(playerStartPos.x / tileWidth);
+	int startTileY = (int)(playerStartPos.y / tileHeight);
 
-	// 2. 判斷是否為 Boss 關卡 (每 5 關觸發)
+	// 3. 生成地形
 	if (IsBossLevel()) {
-		// Boss 競技場：超大空地，四周有牆，中間散落一些柱子當掩體
 		for (int y = 0; y < mapRows; y++) {
 			for (int x = 0; x < mapCols; x++) {
 				if (x == 0 || y == 0 || x == mapCols - 1 || y == mapRows - 1) {
 					grid[y][x] = 1;
 				}
 				else if (x % 15 == 0 && y % 15 == 0 && x > 5 && y > 5 && x < mapCols - 5 && y < mapRows - 5) {
-					grid[y][x] = 1; // 掩體柱子
+					grid[y][x] = 1;
 				}
 			}
 		}
 	}
 	else {
-		// 普通關卡：動態迷宮生成
 		bool connected = false;
 		while (!connected) {
-			// 先鋪滿空地
 			for (int y = 0; y < mapRows; y++) {
 				for (int x = 0; x < mapCols; x++) {
 					if (x == 0 || y == 0 || x == mapCols - 1 || y == mapRows - 1) grid[y][x] = 1;
@@ -60,36 +64,35 @@ void Map::InitLevel(int level) {
 				}
 			}
 
-			// 依據關卡數增加牆壁障礙物的密度 (15% ~ 35%)
-			float density = 0.15f + std::min(level * 0.015f, 0.20f);
+			// 牆壁密度稍微調降，避免螢幕內太擠 (15% ~ 25%)
+			float density = 0.15f + std::min(level * 0.01f, 0.10f);
 			int numWalls = (int)(mapCols * mapRows * density);
 
 			for (int i = 0; i < numWalls; i++) {
-				int rx = 2 + rand() % (mapCols - 4);
-				int ry = 2 + rand() % (mapRows - 4);
-				// 絕對保護玩家起點不被牆塞死 (留出 6x6 空地)
-				if (rx < 6 && ry < 6) continue;
+				int rx = 1 + rand() % (mapCols - 2);
+				int ry = 1 + rand() % (mapRows - 2);
+
+				// 【關鍵修復】：挖出一個 5x5 的絕對安全區，保證出生點(螢幕正中央)絕對沒有牆壁！
+				if (abs(rx - startTileX) <= 2 && abs(ry - startTileY) <= 2) continue;
+
 				grid[ry][rx] = 1;
 			}
-
-			// 利用完美連通性檢查，不通就打掉重做！
 			connected = IsMapConnected();
 		}
 	}
 
-	// 3. 放置物件 (利用 GetRandomFreePosition)
-	for (int i = 0; i < 3; i++) { // 固定生成 3 把鑰匙
-		keyPositions.push_back(GetRandomFreePosition());
+	// 4. 放置物件 【關鍵修復】：傳入 margin = 2，強制所有物件離螢幕邊界至少 2 格(100像素)遠！
+	for (int i = 0; i < 3; i++) {
+		keyPositions.push_back(GetRandomFreePosition(2));
 		keyCollected.push_back(false);
 	}
 
-	chestPositions.push_back(GetRandomFreePosition());
+	chestPositions.push_back(GetRandomFreePosition(2));
 	chestOpened.push_back(false);
 
-	// 放置下一層的門 (確保它離起點夠遠)
-	doorPos = GetRandomFreePosition();
-	while (sqrtf(powf(doorPos.x - playerStartPos.x, 2) + powf(doorPos.y - playerStartPos.y, 2)) < (mapCols * tileWidth * 0.4f)) {
-		doorPos = GetRandomFreePosition();
+	doorPos = GetRandomFreePosition(2);
+	while (sqrtf(powf(doorPos.x - playerStartPos.x, 2) + powf(doorPos.y - playerStartPos.y, 2)) < (mapCols * tileWidth * 0.3f)) {
+		doorPos = GetRandomFreePosition(2);
 	}
 }
 
@@ -164,20 +167,21 @@ bool Map::IsWall(float worldX, float worldY) const {
 	return grid[tileY][tileX] == 1;
 }
 
-Vector2 Map::GetRandomFreePosition() {
-	Vector2 pos = { 100, 100 };
+// 【修改】加入 marginTiles 參數，限制隨機座標不要貼在極限邊緣
+Vector2 Map::GetRandomFreePosition(int marginTiles) {
+	Vector2 pos = { playerStartPos.x, playerStartPos.y }; // 預設防呆回傳中心點
 	bool found = false;
 
-	for (int attempts = 0; attempts < 100 && !found; attempts++) {
-		int randomX = rand() % mapCols;
-		int randomY = rand() % mapRows;
+	for (int attempts = 0; attempts < 200 && !found; attempts++) {
+		// 限制隨機範圍在 marginTiles 之外
+		int randomX = marginTiles + rand() % (mapCols - 2 * marginTiles);
+		int randomY = marginTiles + rand() % (mapRows - 2 * marginTiles);
 
 		if (grid[randomY][randomX] == 0) {
 			pos = { (float)(randomX * tileWidth + tileWidth / 2), (float)(randomY * tileHeight + tileHeight / 2) };
 			found = true;
 		}
 	}
-
 	return pos;
 }
 
