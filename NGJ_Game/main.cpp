@@ -1083,35 +1083,28 @@ int main() {
 				}
 
 				// 2. 呼叫動畫繪製函式
-				// 1. 計算怪物面向：如果怪物在移動，就看向移動方向；否則看向玩家
-				float rotationAngle = 0.0f;
 
-				// 計算怪物到玩家的方向向量
-				float dirX = playerMapPos.x - wp.x;
-				float dirY = playerMapPos.y - wp.y;
-
-				// 只有在追擊或攻擊狀態時，才讓怪物看向玩家
-				if (e.GetState() == NGJ::EnemyState::Chase || e.GetState() == NGJ::EnemyState::Attack) {
-					// 使用 atan2 算出弧度，再轉成角度
-					rotationAngle = atan2f(dirY, dirX) * (180.0f / 3.14159f);
-				}
-				else {
-					// 若在巡邏，則看向移動方向 (這裡需用到 e 的位置變化，簡單起見預設 0 度)
-					rotationAngle = 0.0f;
+				// 1. 計算怪物面向：Goblin 與 Wolf 才會旋轉面向玩家
+				float rotationAngle = 0.0f; // 預設值
+				if (e.name == "Goblin" || e.name == "Wolf") {
+					// 只有在追擊或攻擊狀態時，才讓這些怪物看向玩家
+					if (e.GetState() == NGJ::EnemyState::Chase || e.GetState() == NGJ::EnemyState::Attack) {
+						float dirX = playerMapPos.x - wp.x;
+						float dirY = playerMapPos.y - wp.y;
+						rotationAngle = atan2f(dirY, dirX) * (180.0f / 3.14159f);
+					}
 				}
 
-				// 2. 呼叫繪製函式 (注意：我們需要把 rotationAngle 傳給繪圖層)
-				// 因為 AssetManager 的 DrawEntityAnimated 目前沒吃到旋轉角度，
-				// 我們直接在這裡用 DrawTexturePro 來實現，或者修改 AssetManager。
-
-				// 建議直接在 main.cpp 這樣畫，最精準：
+				// 2. 呼叫繪製函式
 				int frameWidth = tex.width / enemyFrames;
 				Rectangle srcRec = { 0.0f, 0.0f, (float)frameWidth, (float)tex.height };
 				Rectangle destRec = { wp.x, wp.y, (float)frameWidth * scale, (float)tex.height * scale };
 				Vector2 origin = { (float)frameWidth * scale / 2.0f, (float)tex.height * scale / 2.0f };
 
-				// 畫出來！加上 rotationAngle 參數
-				DrawTexturePro(tex, srcRec, destRec, origin, rotationAngle + 90.0f, WHITE);
+				// 如果是 Goblin 或 Wolf，使用算出的角度；否則使用 0 度（不旋轉）
+				float finalRotation = (e.name == "Goblin" || e.name == "Wolf") ? (rotationAngle + 270.0f) : 0.0f;
+
+				DrawTexturePro(tex, srcRec, destRec, origin, finalRotation, WHITE);
 
 				// Goblin 盾牌防線線條（保持繪製在怪物前方）
 				if (e.name == "Goblin") {
