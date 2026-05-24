@@ -216,7 +216,7 @@ void NGJ::Enemy::TriggerBossBarrage() {
 	bossBulletBarrageActive = true;
 	bossBulletBarrageTimer = 0.0f;
 	bossBarrageWaveIndex = 0;
-	bossBarrageWaveTimer = 0.0f;
+	bossBarrageWaveTimer = 3.0f;
 	bossAtCenter = true;
 	state = NGJ::EnemyState::Idle;
 }
@@ -270,20 +270,6 @@ void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Ma
 		return;
 	}
 
-	if (!bossBulletBarrageActive) {
-		bossAttackCycleTimer += deltaTime;
-		if (bossAttackCycleTimer >= 20.0f) {
-			bossAttackCycleTimer = 0.0f;
-			if ((std::rand() % 100) < 60) {
-				if (viewMin && viewMax) {
-					position.x = (viewMin->x + viewMax->x) * 0.5f;
-					position.y = (viewMin->y + viewMax->y) * 0.5f;
-				}
-				TriggerBossBarrage();
-			}
-		}
-	}
-
 	if (bossBulletBarrageActive) {
 		bossBulletBarrageTimer += deltaTime;
 		bossBarrageWaveTimer += deltaTime;
@@ -296,12 +282,8 @@ void NGJ::Enemy::UpdateBoss(float deltaTime, const NGJ::Vec2& playerPosition, Ma
 			bossBulletBarrageActive = false;
 			ClearBossBullets();
 			TriggerBossIdleLock(5.0f);
+			bossAtCenter = false;
 		}
-		return;
-	}
-
-	if (bossSummonTriggered && currentHP <= (maxHP * 3) / 4) {
-		state = NGJ::EnemyState::Idle;
 		return;
 	}
 

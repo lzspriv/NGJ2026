@@ -347,11 +347,12 @@ int main() {
 			// 切換到新關卡時重生怪物
 			enemies.clear();
 
+			// 找到 if (dungeonMap.GetCurrentLevel() != lastLevel) 區塊內的 Boss 生成程式碼
 			if (dungeonMap.IsBossLevel()) {
-				// 第一階段 Boss：固定數值與技能
-				enemies.emplace_back("GIANT BOSS", 100, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monLeft + monW / 2), (float)(monTop + monH / 2)));
+				// 移除 monLeft 與 monTop，直接使用 monW / 2 與 monH / 2
+				enemies.emplace_back("GIANT BOSS", 100, 10, 1, 55.0f, 9999.0f, 36.0f, 0.8f, NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 				enemies.back().ConfigureBossPhaseOne();
-				enemies.back().SetPosition(NGJ::Vec2((float)(monLeft + monW / 2), (float)(monTop + monH / 2)));
+				enemies.back().SetPosition(NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 				dungeonMap.ClearBossObstacles();
 			}
 			else {
@@ -742,6 +743,14 @@ int main() {
 			spawnRandomMinion(3);
 			swordHitThisSwing.assign(enemies.size(), false);
 			bossSummonResolved = true;
+			// 【新增這段】重新掃描陣列，把 bossEnemy 指標綁定到搬家後的新位置！
+			bossEnemy = nullptr;
+			for (auto& e : enemies) {
+				if (e.IsBoss()) {
+					bossEnemy = &e;
+					break;
+				}
+			}
 		}
 
 		if (bossEnemy && !isUiPause) {
@@ -751,6 +760,7 @@ int main() {
 				if (bossEventTimer >= 20.0f) {
 					bossEventTimer = 0.0f;
 					if ((std::rand() % 100) < 50) {
+						bossEnemy->SetPosition(NGJ::Vec2((float)(monW / 2), (float)(monH / 2)));
 						bossEnemy->TriggerBossBarrage();
 						dungeonMap.SpawnBossObstacles(4);
 						bossObstacleSpawned = true;
