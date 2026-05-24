@@ -16,6 +16,7 @@ int main() {
 
 	// 先讓視窗出現在螢幕中間偏左上的位置，方便測試擴張
 	InitWindow(currentWidth, currentHeight, "NGJ2026 - Integration: Map + Player");
+	SetExitKey(0); // 【新增】禁用預設的 ESC 關閉視窗，讓我們能用它來暫停
 	AssetManager::LoadAllAssets();
 	SetTargetFPS(60);
 
@@ -167,9 +168,25 @@ int main() {
 	// 用來存儲當下被隨機抽出來的 3 個選項
 	std::vector<RewardOption> currentRewards(3);
 
+	bool isGameStarted = false; // 控制是否在主選單
+	bool isPaused = false;      // 控制是否在暫停狀態
+
 	while (!WindowShouldClose()) {
 		float dt = GetFrameTime();
-		bool isUiPause = showRewardUI || showChestEntryPrompt;
+
+		// 1. 選單與暫停狀態控制
+		if (!isGameStarted) {
+			if (IsKeyPressed(KEY_ENTER)) isGameStarted = true;
+		}
+		else if (!isGameOver) {
+			// 按 ESC 或 P 鍵可以切換暫停
+			if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+				isPaused = !isPaused;
+			}
+		}
+
+		// 2. 終極時間停止器：將未開始與暫停加入全局凍結判定
+		bool isUiPause = showRewardUI || showChestEntryPrompt || isPaused || !isGameStarted;
 		if (!isGameOver && !isUiPause && playerInvincibleTimer > 0.0f) {
 			playerInvincibleTimer -= dt;
 			if (playerInvincibleTimer < 0.0f) playerInvincibleTimer = 0.0f;
@@ -178,10 +195,11 @@ int main() {
 			isGameOver = true;
 		}
 		if (isGameOver) {
+			if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)) break; // 按 ESC 或 Q 關閉遊戲
 			BeginDrawing();
 			ClearBackground(BLACK);
-			DrawText("GAME OVER", currentWidth / 2 - 90, currentHeight / 2 - 20, 36, RED);
-			DrawText("Press ESC to quit", currentWidth / 2 - 90, currentHeight / 2 + 20, 18, WHITE);
+			DrawText("SYSTEM CONNECTION LOST - GAME OVER", currentWidth / 2 - 180, currentHeight / 2 - 20, 20, RED);
+			DrawText("Press [ESC] or [Q] to quit", currentWidth / 2 - 120, currentHeight / 2 + 30, 16, WHITE);
 			EndDrawing();
 			continue;
 		}
@@ -971,6 +989,29 @@ int main() {
 			DrawRectangleLines(promptX + 170, promptY + 80, 80, 25, RED);
 			DrawText("[N] NO", promptX + 185, promptY + 85, 14, RED);
 		}
+		// ==========================================
+		// 主選單與暫停 UI 覆蓋層
+		// ==========================================
+		if (!isGameStarted) {
+			// 主選單黑幕與標題
+			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.85f));
+			DrawText("NGJ 2026: ABSOLUTE EXPANSION", currentWidth / 2 - 160, currentHeight / 2 - 80, 20, GREEN);
+			DrawText("Press [ENTER] to Initialize System", currentWidth / 2 - 140, currentHeight / 2 - 20, 16, RAYWHITE);
+
+			// 操作說明
+			DrawText("================ CONTROLS ================", currentWidth / 2 - 170, currentHeight / 2 + 40, 14, GRAY);
+			DrawText("[WASD / Arrows]  Move & Push Window", currentWidth / 2 - 140, currentHeight / 2 + 70, 14, LIGHTGRAY);
+			DrawText("[Mouse]  Aim Direction", currentWidth / 2 - 140, currentHeight / 2 + 90, 14, LIGHTGRAY);
+			DrawText("[SPACE]  Attack", currentWidth / 2 - 140, currentHeight / 2 + 110, 14, LIGHTGRAY);
+			DrawText("[1] Shoot Mode    [2] Melee Mode", currentWidth / 2 - 140, currentHeight / 2 + 130, 14, LIGHTGRAY);
+		}
+		else if (isPaused) {
+			// 暫停黑幕
+			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.6f));
+			DrawText("SYSTEM PAUSED", currentWidth / 2 - 75, currentHeight / 2 - 20, 20, LIGHTGRAY);
+			DrawText("Press [ESC] or [P] to Resume", currentWidth / 2 - 110, currentHeight / 2 + 20, 16, RAYWHITE);
+		}
+
 		// ==========================================
 		EndDrawing();
 	}
