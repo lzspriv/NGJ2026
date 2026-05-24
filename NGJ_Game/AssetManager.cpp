@@ -60,7 +60,7 @@ void AssetManager::LoadAllAssets() {
     std::cout << "[AssetManager] Loading assets..." << std::endl;
 
     // 載入貼圖
-    menuBackground = LoadTexture("assets/bg_menu.png");
+    menuBackground = LoadTexture("assets/menu.png");
     playerTexture = LoadTexture("assets/player.png");
     bossTexture = LoadTexture("assets/boss.png");
 

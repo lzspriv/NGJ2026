@@ -1120,6 +1120,7 @@ int main() {
 
 				if (e.name == "Bat") tex = AssetManager::GetBatTexture();
 				else if (e.name == "Wolf") tex = AssetManager::GetWolfTexture();
+				else if (e.name == "Slime") tex = AssetManager::GetSlimeTexture();
 				else if (e.name == "Goblin") tex = AssetManager::GetGoblinTexture();
 				else if (e.name == "Assassin") tex = AssetManager::GetAssassinTexture();
 				else if (e.name == "GIANT BOSS") {
@@ -1176,9 +1177,16 @@ int main() {
 				// 血條繪製
 				int barW = 30;
 				int hpW = (int)((float)e.GetCurrentHP() / (float)e.GetMaxHP() * barW);
-				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, barW, 5, DARKGRAY);
-				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - 20, hpW, 5, RED);
-				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y + 16, 10, WHITE);
+
+				// 【關鍵修正】：根據 scale 動態上移血條位置
+				// 若 scale 為 2.0 (Boss)，我們往上偏移更多 (例如 -45)，若是一般怪 (-20)
+				int yOffset = (scale > 1.5f) ? 45 : 20;
+
+				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - yOffset, barW, 5, DARKGRAY);
+				DrawRectangle((int)wp.x - barW / 2, (int)wp.y - yOffset, hpW, 5, RED);
+
+				// 名字也同步上移，避免擋住頭部
+				DrawText(e.name.c_str(), (int)wp.x - 16, (int)wp.y - yOffset - 15, 10, WHITE);
 				// ==========================================
 			// 🔻 第五步貼在這裡：畫出掉落在地上的補血紅點 🔻
 				for (const auto& orb : healthOrbs) {
@@ -1308,8 +1316,17 @@ int main() {
 		// 主選單與暫停 UI 覆蓋層
 		// ==========================================
 		if (!isGameStarted) {
-			// 主選單黑幕與標題
-			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.85f));
+			// 1. 繪製背景圖 (取代原先的 ClearBackground)
+			// 使用 DrawTexturePro 可以讓圖片自動縮放填滿目前視窗
+			Texture2D menuTex = AssetManager::GetMenuBackground();
+			Rectangle srcRec = { 0.0f, 0.0f, (float)menuTex.width, (float)menuTex.height };
+			Rectangle destRec = { 0.0f, 0.0f, (float)currentWidth, (float)currentHeight };
+			DrawTexturePro(menuTex, srcRec, destRec, { 0, 0 }, 0.0f, WHITE);
+
+			// 2. 疊加一層淡淡的遮罩，確保文字清晰可見
+			DrawRectangle(0, 0, currentWidth, currentHeight, Fade(BLACK, 0.6f));
+
+			// 3. 繪製標題與說明文字
 			DrawText("NGJ 2026: ABSOLUTE EXPANSION", currentWidth / 2 - 160, currentHeight / 2 - 80, 20, GREEN);
 			DrawText("Press [ENTER] to Initialize System", currentWidth / 2 - 140, currentHeight / 2 - 20, 16, RAYWHITE);
 
