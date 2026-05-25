@@ -10,7 +10,7 @@
 下載後請解壓縮 zip，執行 LifeBound.exe 開始遊戲。
 
 This game uses these sounds from freesound:
-"VS Button Click 05" by Vilkas_Sound( https://freesound.org/people/Vilkas_Sound/sounds/707042/ ) licensed under CCBY 4.0
-"Upgrade 2" by NIKOS34(https://freesound.org/people/NIKOS34/sounds/656396/ ) licensed under CC0
-"Telephone Placed In Dock Beep" , "Knife Slash Spike Trap sharp sound 4"by RutgerMuller(https://freesound.org/people/RutgerMuller/sounds/51169/ ) licensed under CC0
-"Laser pistol/gun"by steshystesh(https://freesound.org/people/steshystesh/sounds/336501/ ) licensed under CCBY 4.0
+- "VS Button Click 05" by Vilkas_Sound( https://freesound.org/people/Vilkas_Sound/sounds/707042/ ) licensed under CCBY 4.0
+- "Upgrade 2" by NIKOS34(https://freesound.org/people/NIKOS34/sounds/656396/ ) licensed under CC0
+- "Telephone Placed In Dock Beep" , "Knife Slash Spike Trap sharp sound 4"by RutgerMuller(https://freesound.org/people/RutgerMuller/sounds/51169/ ) licensed under CC0
+- "Laser pistol/gun"by steshystesh(https://freesound.org/people/steshystesh/sounds/336501/ ) licensed under CCBY 4.0
