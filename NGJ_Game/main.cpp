@@ -894,19 +894,25 @@ int main() {
 				bossBarragePrepared = false;
 			}
 
-			// Boss 死亡後的傳送門邏輯
+			// 在 main.cpp 的 while 迴圈內，Boss 死亡處理區塊
 			if (dungeonMap.IsBossLevel() && bossEnemy->GetIsDead()) {
 				dungeonMap.ActivateBossExitDoor();
 
-				float doorWorldX = initialMonW / 2.0f; // 假設門在螢幕正中央
+				float doorWorldX = initialMonW / 2.0f;
 				float doorWorldY = initialMonH / 2.0f;
-
-				// 計算玩家距離 (注意：playerMapPos 是你在 main.cpp 前面算好的變數)
 				float distToDoor = sqrtf(powf(playerMapPos.x - doorWorldX, 2) + powf(playerMapPos.y - doorWorldY, 2));
 
 				if (distToDoor < 25.0f) {
+					// 【修正點】：直接呼叫 AdvanceLevel，並重置相關旗標
 					dungeonMap.AdvanceLevel();
-					bossSummonResolved = false; // 重置狀態以便下一關
+
+					// 重要：重置 Boss 戰的狀態變數，讓下一輪 Boss 戰能正確運作
+					bossSummonResolved = false;
+					bossBarragePrepared = false;
+					bossObstacleSpawned = false;
+
+					// 強制重置敵人陣列，避免舊 Boss 殘留
+					enemies.clear();
 				}
 			}
 		}

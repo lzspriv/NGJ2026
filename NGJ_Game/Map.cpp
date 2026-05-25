@@ -17,7 +17,12 @@ Map::Map(int screenWidth, int screenHeight, int monW, int monH) {
 Map::~Map() {}
 
 void Map::AdvanceLevel() {
-	InitLevel(currentLevel + 1);
+	// 增加一個簡單的防重複觸發檢查
+	int nextLevel = currentLevel + 1;
+	InitLevel(nextLevel);
+
+	// 傳送後，立刻將門關閉，避免玩家持續站在門上導致無限 loop
+	bossExitDoorActive = false;
 }
 
 void Map::InitLevel(int level) {
@@ -32,7 +37,7 @@ void Map::InitLevel(int level) {
 	// 1. 地圖大小嚴格綁定為螢幕大小，不再無限擴張！
 	mapCols = monitorW / tileWidth;
 	mapRows = monitorH / tileHeight;
-	if (mapCols < 10) mapCols = 10; // 防呆
+	if (mapCols < 10) mapCols = 10; // 防呆ad  
 	if (mapRows < 10) mapRows = 10;
 
 	grid.assign(mapRows, std::vector<int>(mapCols, 0));
