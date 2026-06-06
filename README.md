@@ -29,7 +29,7 @@
 
 * 👥 **3voluti0n** - [@Drccicada](https://github.com/Drccicada)
 * 👥 **Dingjin** - [@Dingjin0924](https://github.com/Dingjin0924)
-* 👥 **ostrichouob** - [@ostrichouob](https://github.com/ostrichouob)
+* 👥 **ostrich** - [@ostrichouob](https://github.com/ostrichouob)
 * 👥 **Sam Liu** - [@lzspriv](https://github.com/lzspriv)
 * 👥 **shixunlan** - [@shixunlan-606](https://github.com/shixunlan-606)
 
